@@ -1,0 +1,3660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRL Satisfaction Analyzer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg:        #edf0f7;
+  --panel:     #ffffff;
+  --surface:   #f4f6fb;
+  --border:    #dce1ed;
+  --border2:   #b8c2d8;
+  --accent:    #1a3d72;
+  --accent-dim:#e6edf8;
+  --green:     #185c3c;
+  --green-dim: #e5f3ec;
+  --purple:    #482880;
+  --purple-dim:#ece6f8;
+  --orange:    #a84a00;
+  --red:       #991c1c;
+  --text:      #141e33;
+  --muted:     #5e6e90;
+  --muted2:    #3d4f72;
+  --goal:      #1a3d72;
+  --softgoal:  #482880;
+  --task:      #a84a00;
+  --resource:  #185c3c;
+  --belief:    #7a1a52;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Inter', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px}
+body{display:flex;flex-direction:column}
+#app-body{flex:1;display:flex;overflow:hidden;min-height:0}
+
+#topbar{height:46px;display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--panel);border-bottom:2px solid var(--accent);flex-shrink:0;position:relative;z-index:10;box-shadow:0 1px 4px rgba(26,61,114,.08)}
+#logo{font-family:var(--sans);font-weight:700;font-size:13px;color:var(--accent);letter-spacing:.04em;white-space:nowrap;display:flex;align-items:center;gap:9px}
+.sep{width:1px;height:28px;background:var(--border2);flex-shrink:0}
+
+#upload-zone{flex:0 1 340px;border:1px dashed var(--border2);border-radius:5px;padding:6px 14px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--muted2);display:flex;align-items:center;gap:8px;transition:border-color .2s,color .2s,background .2s;min-width:0;overflow:hidden;background:var(--surface)}
+#upload-zone:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+#upload-zone.dragover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);border-style:solid}
+#upload-zone.loaded{border-color:var(--green);color:var(--green);border-style:solid;background:var(--green-dim)}
+#upload-zone .icon{font-size:14px;flex-shrink:0}
+#upload-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#file-input{display:none}
+
+.settings-group{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--muted2);flex-shrink:0}
+.settings-group label{color:var(--muted);font-weight:600;letter-spacing:.06em;font-size:9.5px;text-transform:uppercase}
+.settings-group input[type="text"],.settings-group input[type="password"],.settings-group select{background:var(--surface);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 8px;outline:none;transition:border-color .15s,box-shadow .15s}
+.settings-group select{cursor:pointer;width:190px;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%233d4f72'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
+.settings-group select option{background:var(--surface)}
+.settings-group input:focus,.settings-group select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(26,61,114,.12)}
+.settings-group select:disabled{opacity:.5;cursor:not-allowed}
+
+#reload-models-btn{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted2);font-family:var(--mono);font-size:13px;padding:3px 7px;cursor:pointer;line-height:1;transition:border-color .15s,color .15s;flex-shrink:0}
+#reload-models-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+#status-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;cursor:pointer;transition:background .3s}
+#status-dot.ok{background:var(--green);box-shadow:0 0 6px rgba(24,92,60,.5)}
+#status-dot.error{background:var(--red)}
+#status-dot.busy{background:var(--accent);animation:breathe 1.2s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.3}}
+#ping-btn{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted2);font-family:var(--mono);font-size:10px;padding:3px 7px;cursor:pointer;transition:border-color .15s,color .15s}
+#ping-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+#interrupt-btn{display:none;align-items:center;gap:5px;background:rgba(153,28,28,.08);border:1px solid rgba(153,28,28,.35);border-radius:4px;color:var(--red);font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 9px;cursor:pointer;transition:all .15s;flex-shrink:0;letter-spacing:.02em}
+#interrupt-btn:hover{background:var(--red);color:#fff;border-color:var(--red)}
+#interrupt-btn .stop-sq{display:inline-block;width:7px;height:7px;background:currentColor;border-radius:1px;flex-shrink:0}
+
+#reset-btn{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted2);font-family:var(--mono);font-size:10px;padding:3px 8px;cursor:pointer;transition:all .15s;flex-shrink:0}
+#reset-btn:hover{background:rgba(153,28,28,.07);border-color:rgba(153,28,28,.35);color:var(--red)}
+
+#main{flex:1;min-width:0;display:grid;grid-template-columns:200px 1fr 250px 270px;grid-template-rows:1fr 180px;overflow:hidden;position:relative}
+
+/* ── Resize handles ─────────────────────────────────────────────────── */
+.v-resize{position:absolute;top:0;width:6px;margin-left:-3px;cursor:col-resize;z-index:200;background:transparent;transition:background .15s}
+.v-resize::after{content:'';position:absolute;left:2px;top:0;width:2px;height:100%;background:var(--border2);transition:background .15s,width .15s,left .15s}
+.v-resize:hover::after,.v-resize.rz-active::after{background:var(--accent);width:3px;left:1.5px}
+.v-resize:hover,.v-resize.rz-active{background:rgba(26,61,114,.07)}
+#output-panel .panel-head,#strategy-panel .panel-head{cursor:row-resize;transition:background .15s}
+#output-panel .panel-head:hover,#output-panel .panel-head.rz-active,#strategy-panel .panel-head:hover,#strategy-panel .panel-head.rz-active{background:var(--accent-dim)}
+#output-panel .panel-head .rz-hint{display:inline-block;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.04em;margin-left:6px;opacity:0;transition:opacity .2s;user-select:none}
+#output-panel .panel-head:hover .rz-hint{opacity:1}
+body.col-resizing,body.row-resizing{user-select:none}
+body.col-resizing{cursor:col-resize!important}
+body.row-resizing{cursor:row-resize!important}
+
+.panel{display:flex;flex-direction:column;border-right:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden;background:var(--panel)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:0 12px;height:32px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.panel-title{font-family:var(--sans);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2)}
+.panel-meta{font-family:var(--mono);font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.panel-body{flex:1;overflow-y:auto;padding:6px}
+.panel-body::-webkit-scrollbar{width:4px}
+.panel-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+#actors-panel{grid-column:1;grid-row:1}
+.actor-item{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:5px;cursor:pointer;margin-bottom:1px;border:1px solid transparent;transition:background .12s,border-color .12s;user-select:none}
+.actor-item:hover{background:var(--surface)}
+.actor-item.active{background:var(--accent-dim);border-color:rgba(26,61,114,.2)}
+.actor-avatar{width:26px;height:26px;border-radius:4px;background:var(--surface);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;font-weight:600;color:var(--muted2);flex-shrink:0;transition:border-color .12s,color .12s}
+.actor-item.active .actor-avatar{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.actor-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .12s}
+.actor-item.active .actor-name{color:var(--accent);font-weight:600}
+.actor-count{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--muted);flex-shrink:0}
+
+#elements-panel{grid-column:2;grid-row:1}
+.elem-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:5px;cursor:pointer;margin-bottom:0;border:1px solid transparent;transition:background .12s,border-color .12s;user-select:none}
+.elem-wrap{display:flex;flex-direction:column;margin-bottom:2px;border-radius:5px;border:1px solid transparent;cursor:pointer;transition:border-color .12s}
+.elem-wrap:hover .elem-item,.elem-wrap:hover .elem-row2{background:var(--surface)}
+.elem-wrap.selected .elem-item,.elem-wrap.selected .elem-row2{background:var(--green-dim)}
+.elem-wrap.selected{border-color:rgba(24,92,60,.2)}
+.elem-type{font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.06em;padding:2px 5px;border-radius:3px;flex-shrink:0;text-transform:uppercase;min-width:56px;text-align:center}
+.et-Goal{background:rgba(26,61,114,.1);color:var(--goal)}
+.et-SoftGoal{background:rgba(72,40,128,.1);color:var(--softgoal)}
+.et-Task{background:rgba(168,74,0,.1);color:var(--task)}
+.et-Resource{background:rgba(24,92,60,.1);color:var(--resource)}
+.et-Belief{background:rgba(122,26,82,.1);color:var(--belief)}
+.elem-name{font-size:12px;font-weight:400;flex:1;min-width:0}
+.elem-actor-tag{font-family:var(--mono);font-size:9px;color:var(--muted);flex-shrink:0;white-space:nowrap;overflow:hidden;max-width:80px;text-overflow:ellipsis}
+.filter-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;background:var(--accent-dim);color:var(--accent);padding:2px 7px;border-radius:10px}
+.filter-pill button{background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;padding:0;line-height:1}
+.filter-pill button:hover{color:var(--red)}
+
+#links-panel{grid-column:3;grid-row:1}
+#query-panel{grid-column:4;grid-row:1/3;border-right:none;border-bottom:none}
+#query-area{flex:1;resize:none;background:var(--surface);border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.7;padding:14px;outline:none}
+#query-area::placeholder{color:var(--muted)}
+.query-footer{padding:10px;background:var(--bg);display:flex;flex-direction:column;gap:7px;flex-shrink:0;border-top:1px solid var(--border)}
+
+.btn-row{display:flex;gap:6px}
+.threshold-row{display:flex;gap:6px;align-items:stretch}
+#threshold-input{font-family:var(--mono);font-size:12px;width:68px;flex-shrink:0;padding:8px 6px;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--text);text-align:center;outline:none;transition:border-color .15s,box-shadow .15s}
+#threshold-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(26,61,114,.1)}
+#threshold-input::placeholder{color:var(--muted)}
+.btn{font-family:var(--sans);font-size:12px;font-weight:600;padding:8px 12px;border-radius:5px;border:1px solid var(--border2);cursor:pointer;transition:all .15s;letter-spacing:.02em;display:flex;align-items:center;gap:6px;justify-content:center;white-space:nowrap}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);flex:1}
+.btn-primary:hover:not(:disabled){background:#224e8a}
+.btn-ghost{background:var(--surface);color:var(--muted2);border-color:var(--border2)}
+.btn-ghost:hover:not(:disabled){background:var(--border);color:var(--text)}
+.btn-green{background:var(--green-dim);color:var(--green);border-color:rgba(24,92,60,.2);width:100%}
+.btn-green:hover:not(:disabled){background:rgba(24,92,60,.14);border-color:rgba(24,92,60,.35)}
+.btn-purple{background:var(--purple-dim);color:var(--purple);border-color:rgba(72,40,128,.2);width:100%}
+.btn-purple:hover:not(:disabled){background:rgba(72,40,128,.14);border-color:rgba(72,40,128,.35)}
+#selection-summary{font-family:var(--mono);font-size:10px;color:var(--muted);padding:6px 10px;background:var(--surface);border-radius:4px;line-height:1.7;border:1px solid var(--border)}
+
+#bottom-row{grid-column:1/4;grid-row:2;display:flex;overflow:hidden}
+#output-panel{flex:1;min-width:80px;border-bottom:none}
+#output-body{flex:1;overflow-y:auto;padding:12px 16px}
+#output-body::-webkit-scrollbar{width:3px}
+#output-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+#strategy-panel{display:none;border-right:none;border-bottom:none;min-width:80px;flex-shrink:0}
+#strategy-body{flex:1;overflow-y:auto;padding:12px 16px}
+#strategy-body::-webkit-scrollbar{width:3px}
+#strategy-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.strat-panel-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-family:var(--mono);font-size:11px;text-align:center;padding:20px}
+.strat-panel-loading{display:flex;align-items:center;justify-content:center;padding:24px}
+.strat-title-label{font-family:var(--mono);font-size:10px;color:var(--muted2);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.strat-title-label::before{content:'▸';color:var(--purple)}
+.strat-section-label{font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2);padding:4px 0 3px;display:flex;align-items:center;gap:5px}
+.output-entry{margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.output-entry:last-child{border-bottom:none;margin-bottom:0}
+.output-label{font-family:var(--mono);font-size:10px;color:var(--muted2);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.output-label::before{content:'▸';color:var(--accent)}
+.output-text{font-size:12.5px;line-height:1.75;color:var(--text);white-space:pre-wrap;font-family:var(--sans)}
+.output-text.streaming::after{content:'▋';color:var(--accent);animation:blink .9s step-end infinite}
+.strat-table{width:100%;border-collapse:collapse;margin-top:4px}
+.strat-table td{padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.strat-table tr:last-child td{border-bottom:none}
+.strat-table .s-type{font-family:var(--mono);font-size:8px;font-weight:600;letter-spacing:.06em;padding:2px 5px;border-radius:3px;text-transform:uppercase;white-space:nowrap}
+.strat-table .s-name{font-size:12px;color:var(--text)}
+.strat-table .s-actor{font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+.strat-table .s-bar-wrap{width:140px;min-width:100px}
+.strat-bar{height:7px;border-radius:3px;background:var(--surface);overflow:hidden;flex:1;border:1px solid var(--border2)}
+.strat-bar-fill{height:100%;border-radius:2px}
+.strat-val{font-family:var(--mono);font-size:9px;font-weight:600;margin-left:6px;min-width:34px;text-align:right;flex-shrink:0}
+.strat-bar-row{display:flex;align-items:center}
+.sat-100{background:var(--green)}
+.sat-75{background:#2e7d52}
+.sat-50{background:var(--orange)}
+.sat-25{background:#8b3a10}
+.sat-0{background:var(--red)}
+.strat-loading{font-family:var(--mono);font-size:11px;color:var(--muted);animation:breathe 1.4s ease-in-out infinite;display:block;padding:4px 0}
+.strat-unattainable-banner{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:5px;background:rgba(168,74,0,.1);border:1px solid rgba(168,74,0,.3);color:var(--orange);font-family:var(--mono);font-size:10px;font-weight:600;margin-bottom:8px;letter-spacing:.02em}
+.strat-threshold-ok-banner{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:5px;background:var(--green-dim);border:1px solid rgba(24,92,60,.3);color:var(--green);font-family:var(--mono);font-size:10px;font-weight:600;margin-bottom:8px;letter-spacing:.02em}
+.strat-pdf-warn-banner{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:5px;background:rgba(72,40,128,.08);border:1px solid rgba(72,40,128,.25);color:var(--purple);font-family:var(--mono);font-size:9.5px;font-weight:500;margin-bottom:8px;letter-spacing:.01em}
+.range-row{display:flex;align-items:center;gap:5px;padding:4px 0 2px}
+.range-label{font-family:var(--mono);font-size:10px;color:var(--muted);flex-shrink:0;min-width:38px}
+.range-sep{font-family:var(--mono);font-size:10px;color:var(--muted2);flex-shrink:0}
+.sat-range-input{
+  width:62px;font-family:var(--mono);font-size:11px;text-align:center;
+  padding:4px 6px;border-radius:4px;border:1px solid var(--border2);
+  background:var(--surface);color:var(--text);outline:none;
+  transition:border-color .15s,box-shadow .15s;
+  -moz-appearance:textfield;
+}
+.sat-range-input::-webkit-inner-spin-button,.sat-range-input::-webkit-outer-spin-button{-webkit-appearance:none}
+.sat-range-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(26,61,114,.1)}
+.sat-range-input.invalid{border-color:var(--red);color:var(--red)}
+.range-apply-btn{
+  font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;padding:4px 8px;border-radius:4px;
+  background:var(--accent);color:#fff;border:none;cursor:pointer;
+  transition:opacity .15s;flex-shrink:0;
+}
+.range-apply-btn:hover{opacity:.85}
+.range-apply-btn:disabled{opacity:.4;cursor:not-allowed}
+.range-presets{display:flex;align-items:center;gap:4px;padding:0 0 4px}
+.range-preset-btn{
+  font-family:var(--mono);font-size:9px;padding:3px 7px;border-radius:4px;
+  border:1px solid var(--border2);background:var(--surface);
+  color:var(--muted2);cursor:pointer;transition:all .12s;white-space:nowrap;
+}
+.range-preset-btn:hover{border-color:var(--accent);color:var(--accent)}
+.range-preset-btn.active{background:var(--accent-dim);border-color:rgba(26,61,114,.4);color:var(--accent);font-weight:600}
+/* old compat */
+.range-opt{font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid var(--border2);background:var(--surface);color:var(--muted2);cursor:pointer;transition:all .15s;flex:1;text-align:center}
+.range-opt:hover{border-color:var(--accent);color:var(--accent)}
+.range-opt.active{background:var(--accent-dim);border-color:rgba(26,61,114,.4);color:var(--accent);font-weight:600}
+.strat-table .s-val-cell{font-family:var(--mono);font-size:11px;font-weight:600;white-space:nowrap;text-align:right;padding-right:4px;width:52px}
+.strat-table .s-label-cell{font-family:var(--mono);font-size:9px;font-weight:600;white-space:nowrap;padding-left:0;min-width:36px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-family:var(--mono);font-size:11px;text-align:center;padding:20px}
+.empty-icon{font-size:28px;opacity:.2}
+kbd{font-family:var(--mono);font-size:9px;background:var(--surface);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--muted2)}
+.icon-btn{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-family:var(--mono);font-size:9px;padding:2px 6px;cursor:pointer;transition:all .12s}
+.icon-btn:hover{color:var(--red);border-color:var(--red)}
+.range-badge{font-family:var(--mono);font-size:9px;color:var(--muted2);background:var(--surface);border:1px solid var(--border2);border-radius:3px;padding:1px 5px;letter-spacing:.04em;flex-shrink:0}
+/* ── Links panel ─────────────────────────────────────────────────── */
+.link-item{display:flex;flex-direction:column;gap:3px;padding:6px 9px;border-radius:5px;cursor:pointer;margin-bottom:2px;border:1px solid transparent;transition:background .12s,border-color .12s;user-select:none}
+.link-item:hover{background:var(--surface)}
+.link-item.selected{background:var(--purple-dim);border-color:rgba(72,40,128,.2)}
+.link-row{display:flex;align-items:center;gap:6px}
+.link-type{font-family:var(--mono);font-size:8px;font-weight:600;letter-spacing:.05em;padding:2px 5px;border-radius:3px;flex-shrink:0;text-transform:uppercase;min-width:70px;text-align:center}
+.lt-Decomposition{background:rgba(168,74,0,.1);color:var(--task)}
+.lt-Contribution-pos{background:rgba(24,92,60,.1);color:var(--green)}
+.lt-Contribution-neg{background:rgba(153,28,28,.1);color:var(--red)}
+.lt-Contribution-neu{background:rgba(94,110,144,.1);color:var(--muted2)}
+.lt-Dependency{background:rgba(26,61,114,.1);color:var(--accent)}
+.link-arrow{font-size:10px;color:var(--muted);flex-shrink:0}
+.link-names{font-size:11px;flex:1;min-width:0;color:var(--text)}
+.link-src{font-weight:500}
+.link-tgt{color:var(--muted2)}
+.link-value{font-family:var(--mono);font-size:10px;font-weight:700;flex-shrink:0;padding:1px 5px;border-radius:3px}
+.lv-pos{color:var(--green);background:rgba(24,92,60,.08)}
+.lv-neg{color:var(--red);background:rgba(153,28,28,.08)}
+.link-meta{font-family:var(--mono);font-size:9px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;padding-left:2px}
+.link-meta-chip{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px}
+/* importance / decomp badges on elements */
+.elem-importance{font-family:var(--mono);font-size:9px;font-weight:700;margin-left:auto;flex-shrink:0;padding:1px 5px;border-radius:3px;background:rgba(26,61,114,.08);color:var(--accent);min-width:24px;text-align:center}
+.elem-decomp{font-family:var(--mono);font-size:8px;font-weight:600;letter-spacing:.04em;flex-shrink:0;padding:1px 5px;border-radius:3px;background:rgba(72,40,128,.08);color:var(--purple);text-transform:uppercase}
+.elem-row2{display:flex;align-items:center;gap:5px;padding:2px 0 0 64px;flex-wrap:wrap}
+.link-filter-row{display:flex;gap:4px;flex-wrap:wrap;padding:6px 6px 2px}
+.lf-btn{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--muted2);cursor:pointer;transition:all .12s;white-space:nowrap}
+.lf-btn.active{background:var(--accent-dim);border-color:rgba(26,61,114,.3);color:var(--accent);font-weight:600}
+.lf-btn:hover:not(.active){border-color:var(--accent);color:var(--accent)}
+.link-detail{padding:10px;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;font-size:11.5px;line-height:1.7}
+.link-detail-row{display:flex;gap:6px;margin-bottom:3px}
+.link-detail-label{font-family:var(--mono);font-size:9px;color:var(--muted);min-width:52px;text-transform:uppercase;letter-spacing:.04em;padding-top:2px}
+.link-detail-val{color:var(--text);font-weight:500}
+*{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+
+/* ── LLM Params Panel (inside side-panel) ─────────────────────────── */
+#params-content{
+  flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:0;
+}
+#params-content::-webkit-scrollbar{width:3px}
+#params-content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.params-header{
+  height:32px;display:flex;align-items:center;padding:0 12px;
+  border-bottom:1px solid var(--border);background:var(--surface);
+  flex-shrink:0;position:sticky;top:0;z-index:2;
+  display:none; /* header now handled by shared tab bar */
+}
+.params-header-title{
+  font-family:var(--sans);font-size:10.5px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--muted2);
+}
+.params-reset-btn{
+  margin-left:auto;background:none;border:1px solid var(--border2);
+  border-radius:4px;color:var(--muted);font-family:var(--mono);
+  font-size:9px;padding:2px 6px;cursor:pointer;transition:all .12s;
+}
+.params-reset-btn:hover{border-color:var(--red);color:var(--red)}
+
+.params-section{padding:10px 12px 4px}
+.params-section-title{
+  font-family:var(--mono);font-size:8.5px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  margin-bottom:8px;display:flex;align-items:center;gap:6px;
+}
+.params-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.param-row{margin-bottom:12px}
+.param-label-row{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:4px;
+}
+.param-label{
+  font-family:var(--sans);font-size:11px;font-weight:500;color:var(--text);
+}
+.param-value{
+  font-family:var(--mono);font-size:10px;font-weight:600;
+  color:var(--accent);background:var(--accent-dim);
+  padding:1px 5px;border-radius:3px;
+}
+.param-slider{
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:4px;border-radius:2px;
+  background:linear-gradient(to right, var(--accent) var(--pct,50%), var(--border2) var(--pct,50%));
+  outline:none;cursor:pointer;transition:height .1s;
+}
+.param-slider:hover{height:5px}
+.param-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+  background:var(--accent);border:2px solid #fff;
+  box-shadow:0 1px 3px rgba(26,61,114,.25);cursor:pointer;
+  transition:transform .1s;
+}
+.param-slider::-webkit-slider-thumb:hover{transform:scale(1.2)}
+.param-slider::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;
+  background:var(--accent);border:2px solid #fff;cursor:pointer;
+}
+.param-hint{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px;line-height:1.4}
+
+.effort-group{display:flex;gap:4px;margin-bottom:4px}
+.effort-btn{
+  flex:1;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;padding:4px 0;border-radius:4px;
+  border:1px solid var(--border2);background:var(--surface);
+  color:var(--muted2);cursor:pointer;transition:all .15s;text-align:center;
+}
+.effort-btn:hover:not(.active){border-color:var(--accent);color:var(--accent)}
+.effort-btn.active{
+  background:var(--accent-dim);border-color:rgba(26,61,114,.4);
+  color:var(--accent);
+}
+
+
+.param-text-input{
+  width:100%;background:var(--surface);border:1px solid var(--border2);
+  border-radius:4px;color:var(--text);font-family:var(--mono);
+  font-size:11px;padding:5px 8px;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.param-text-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(26,61,114,.1)}
+.param-text-input::placeholder{color:var(--muted)}
+.param-toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.param-toggle-label{font-family:var(--sans);font-size:11px;font-weight:500;color:var(--text)}
+.param-toggle{
+  position:relative;width:30px;height:16px;flex-shrink:0;cursor:pointer;
+}
+.param-toggle input{opacity:0;width:0;height:0;position:absolute}
+.param-toggle-track{
+  position:absolute;inset:0;border-radius:8px;
+  background:var(--border2);transition:background .2s;
+}
+.param-toggle input:checked ~ .param-toggle-track{background:var(--accent)}
+.param-toggle-thumb{
+  position:absolute;top:2px;left:2px;width:12px;height:12px;
+  border-radius:50%;background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.2);
+  transition:transform .2s;pointer-events:none;
+}
+.param-toggle input:checked ~ .param-toggle-thumb{transform:translateX(14px)}
+
+/* Params loading skeleton */
+#params-loading{
+  display:none;flex-direction:column;gap:14px;padding:14px 12px;
+}
+#params-loading.active{display:flex}
+.skel-section{display:flex;flex-direction:column;gap:8px}
+.skel-label{height:8px;border-radius:3px;background:var(--border2);animation:skel-pulse 1.4s ease-in-out infinite}
+.skel-bar{height:4px;border-radius:2px;background:var(--border2);animation:skel-pulse 1.4s ease-in-out infinite}
+.skel-bar.w60{width:60%}.skel-bar.w80{width:80%}.skel-bar.w45{width:45%}
+.skel-label.w40{width:40%}.skel-label.w55{width:55%}.skel-label.w35{width:35%}
+@keyframes skel-pulse{0%,100%{opacity:.35}50%{opacity:.7}}
+#params-body{transition:opacity .2s}
+#params-body.loading{opacity:0;pointer-events:none}
+.params-no-model{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:7px;padding:32px 12px;color:var(--muted);font-family:var(--mono);
+  font-size:10px;letter-spacing:.06em;text-transform:uppercase;text-align:center;
+}
+.params-no-model-icon{font-size:20px;opacity:.18}
+.params-probe-note{
+  font-family:var(--mono);font-size:9px;color:var(--muted);
+  text-align:center;padding:4px 0 6px;letter-spacing:.04em;
+}
+
+/* Param row animated visibility */
+.param-row{
+  margin-bottom:12px;
+  overflow:hidden;
+  transition:max-height .22s cubic-bezier(.4,0,.2,1),
+             opacity     .18s cubic-bezier(.4,0,.2,1),
+             margin      .22s cubic-bezier(.4,0,.2,1);
+  max-height:120px; opacity:1;
+}
+.param-row.hidden{
+  max-height:0!important; opacity:0; margin-bottom:0; pointer-events:none;
+}
+/* Section hides when all its rows are hidden */
+.params-section{padding:10px 12px 4px; transition:padding .22s, max-height .22s; overflow:hidden}
+.params-section.hidden{padding:0; max-height:0!important; overflow:hidden}
+
+/* ── Satisfaction Propagation ─────────────────────────────────────────── */
+#sat-mode-btn{
+  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;padding:2px 7px;border-radius:4px;cursor:pointer;
+  border:1px solid var(--border2);background:transparent;color:var(--muted2);
+  transition:all .15s;flex-shrink:0;
+}
+#sat-mode-btn:hover{border-color:var(--accent);color:var(--accent)}
+#sat-mode-btn.active{
+  background:var(--accent);border-color:var(--accent);color:#fff;
+  box-shadow:0 1px 4px rgba(26,61,114,.25);
+}
+
+/* Sat chip row appended inside each .elem-wrap when in sat mode */
+.sat-row{
+  display:flex;align-items:center;gap:0;padding:4px 8px 5px;
+  border-top:1px solid var(--border);margin-top:2px;
+  opacity:0;max-height:0;overflow:hidden;
+  transition:opacity .18s,max-height .2s cubic-bezier(.4,0,.2,1),padding .2s;
+}
+.sat-mode .sat-row{opacity:1;max-height:40px;padding:4px 8px 5px}
+
+/* Numeric sat input per element */
+.sat-num-wrap{display:flex;align-items:center;gap:6px;flex:1;padding:0 2px}
+.sat-num-input{
+  width:66px;font-family:var(--mono);font-size:11px;font-weight:600;
+  text-align:center;padding:3px 6px;border-radius:4px;
+  border:1px solid var(--border2);background:var(--surface);
+  color:var(--text);outline:none;transition:border-color .15s,color .15s;
+  -moz-appearance:textfield;
+}
+.sat-num-input::-webkit-inner-spin-button,.sat-num-input::-webkit-outer-spin-button{-webkit-appearance:none}
+.sat-num-input:focus{border-color:var(--accent)}
+.sat-num-input.has-val{border-color:var(--sat-c,var(--green));color:var(--sat-c,var(--green))}
+.sat-num-hint{font-family:var(--mono);font-size:9px;color:var(--muted)}
+.sat-num-clear{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;transition:color .12s}
+.sat-num-clear:hover{color:var(--red)}
+
+/* Propagated / user-set badge on element */
+.sat-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.02em;
+  padding:1px 5px;border-radius:3px;margin-left:5px;flex-shrink:0;
+  border:1px solid var(--sat-c,var(--border2));
+  color:var(--sat-c,var(--muted2));
+  background:color-mix(in srgb,var(--sat-c,var(--border2)) 10%,transparent);
+}
+.sat-badge.val-user{outline:2px solid var(--task);outline-offset:0px}
+
+/* Run propagation button pinned to bottom of elements panel */
+#sat-run-bar{
+  display:none;padding:8px 10px;border-top:1px solid var(--border);
+  background:var(--panel);flex-direction:column;gap:6px;
+}
+.sat-mode #sat-run-bar{display:flex}
+#sat-run-info{
+  display:flex;align-items:center;justify-content:space-between;
+  font-family:var(--mono);font-size:9px;color:var(--muted);
+  padding:0 2px;
+}
+.sat-run-count{font-weight:600;color:var(--muted2)}
+.sat-run-range{
+  background:var(--accent-dim);color:var(--accent);
+  padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;
+}
+#sat-run-actions{display:flex;gap:6px}
+#sat-run-btn{
+  flex:1;padding:7px 0;border-radius:5px;font-family:var(--mono);font-size:10px;
+  font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--accent);color:#fff;border:none;cursor:pointer;
+  transition:opacity .15s,transform .1s;
+}
+#sat-run-btn:hover{opacity:.88;transform:translateY(-1px)}
+#sat-run-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+#sat-clear-btn{
+  padding:7px 11px;border-radius:5px;font-family:var(--mono);font-size:13px;
+  font-weight:600;background:none;border:1px solid var(--border2);color:var(--muted2);
+  cursor:pointer;transition:all .12s;line-height:1;
+}
+#sat-clear-btn:hover{border-color:var(--red);color:var(--red)}
+
+/* ── Combined Side Panel (Files + Params) ───────────────────────────── */
+#side-panel{
+  display:flex;flex-direction:row-reverse;flex-shrink:0;
+  width:300px;transition:width .22s cubic-bezier(.4,0,.2,1);
+  overflow:hidden;background:var(--panel);
+  border-right:1px solid var(--border);
+  position:relative;
+}
+#side-panel.collapsed{ width:32px; }
+
+/* Narrow tab column (always visible) */
+#side-tab-col{
+  width:32px;min-width:32px;height:100%;
+  display:flex;flex-direction:column;align-items:center;
+  border-left:1px solid var(--border);
+  flex-shrink:0;background:var(--surface);
+}
+.spt-btn{
+  width:32px;flex:0 0 auto;border:none;background:transparent;
+  cursor:pointer;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;padding:10px 0;
+  transition:background .15s;
+}
+.spt-btn:hover{background:var(--accent-dim)}
+.spt-btn.active{background:var(--accent-dim)}
+.spt-btn .spt-icon{
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted2);transition:color .15s;
+}
+.spt-btn:hover .spt-icon,.spt-btn.active .spt-icon{color:var(--accent)}
+.spt-label{
+  writing-mode:vertical-rl;text-orientation:mixed;
+  font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);transition:color .15s;
+  user-select:none;
+}
+.spt-btn:hover .spt-label,.spt-btn.active .spt-label{color:var(--accent)}
+.spt-divider{width:20px;height:1px;background:var(--border);flex-shrink:0}
+
+/* Expanded content area */
+#side-panel-content{
+  flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:200px;min-height:0;
+}
+
+/* Shared tab header bar */
+#side-panel-header{
+  height:32px;display:flex;align-items:center;
+  border-bottom:1px solid var(--border);background:var(--surface);
+  flex-shrink:0;position:sticky;top:0;z-index:2;
+  padding:0 6px 0 0;gap:0;
+}
+.sph-tab{
+  flex:1;height:100%;border:none;background:transparent;cursor:pointer;
+  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--muted);
+  transition:color .15s,background .15s;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.sph-tab:hover{color:var(--accent)}
+.sph-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.sph-count{
+  font-family:var(--mono);font-size:8px;color:var(--muted2);
+  background:var(--border2);padding:1px 4px;border-radius:8px;
+}
+.sph-tab.active .sph-count{background:var(--accent-dim);color:var(--accent)}
+#side-panel-close{
+  width:24px;height:24px;border:none;background:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);border-radius:4px;font-size:14px;flex-shrink:0;
+  transition:color .12s,background .12s;
+}
+#side-panel-close:hover{color:var(--text);background:var(--border)}
+
+/* View switching */
+.side-view{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0;height:0}
+.side-view.active{display:flex;height:auto}
+
+/* ── Files view ── */
+#files-sidebar-body{
+  flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:6px;min-height:0;
+}
+#files-sidebar-empty{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:7px;padding:14px;text-align:center;min-height:0;
+}
+.fs-empty-icon{font-size:24px;opacity:.15}
+.fs-empty-text{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6}
+.fs-entry{
+  border-radius:7px;border:1.5px solid var(--border2);overflow:hidden;
+  background:var(--surface);transition:border-color .15s,box-shadow .15s;flex-shrink:0;
+}
+.fs-entry:hover{border-color:rgba(26,61,114,.4);box-shadow:0 2px 8px rgba(26,61,114,.09)}
+.fs-entry.fs-active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(26,61,114,.13)}
+.fs-thumb-wrap{
+  width:100%;aspect-ratio:4/3;overflow:hidden;background:#dde3f0;
+  position:relative;cursor:pointer;flex-shrink:0;
+}
+.fs-thumb-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}
+.fs-thumb-wrap:hover img{transform:scale(1.05)}
+.fs-thumb-overlay{
+  position:absolute;inset:0;background:rgba(20,30,51,.5);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .18s;font-size:20px;color:#fff;pointer-events:none;
+}
+.fs-thumb-wrap:hover .fs-thumb-overlay{opacity:1}
+.fs-thumb-no-img{
+  width:100%;aspect-ratio:4/3;background:var(--accent-dim);
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+  color:var(--accent);opacity:.45;
+}
+.fs-badge-active{
+  position:absolute;top:5px;left:5px;
+  background:var(--green);color:#fff;font-family:var(--mono);
+  font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  padding:2px 5px;border-radius:3px;pointer-events:none;
+}
+.fs-meta{padding:6px 7px 4px}
+.fs-name{
+  font-family:var(--mono);font-size:9px;font-weight:600;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;
+}
+.fs-stats{font-family:var(--mono);font-size:8px;color:var(--muted);line-height:1.6;margin-bottom:2px}
+.fs-actions{display:flex;gap:4px;padding:0 6px 6px}
+.fs-btn{
+  flex:1;font-family:var(--mono);font-size:8px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.04em;padding:4px 2px;border-radius:4px;
+  border:1px solid var(--border2);background:var(--panel);color:var(--muted2);
+  cursor:pointer;transition:all .12s;text-align:center;white-space:nowrap;line-height:1.2;
+}
+.fs-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.fs-btn.fs-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.fs-btn.fs-primary:hover{opacity:.85}
+/* ── Image lightbox ──────────────────────────────────────────────────── */
+#img-lightbox{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(8,14,28,.85);backdrop-filter:blur(5px);
+  align-items:center;justify-content:center;cursor:pointer;
+}
+#img-lightbox.open{display:flex}
+#img-lightbox-img{
+  max-width:88vw;max-height:86vh;border-radius:8px;
+  box-shadow:0 12px 48px rgba(0,0,0,.55);cursor:default;display:block;
+}
+#img-lightbox-close{
+  position:fixed;top:16px;right:20px;background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.25);border-radius:50%;width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:18px;cursor:pointer;transition:background .15s;z-index:10000;
+}
+#img-lightbox-close:hover{background:rgba(255,255,255,.28)}
+#img-lightbox-fname{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.65);
+  background:rgba(0,0,0,.45);padding:4px 14px;border-radius:20px;pointer-events:none;
+}
+
+/* Legend strip */
+#sat-legend{
+  display:none;padding:4px 10px;background:var(--surface);
+  border-top:1px solid var(--border);gap:8px;align-items:center;flex-wrap:wrap;
+}
+.sat-mode #sat-legend{display:flex}
+.sat-leg-item{display:flex;align-items:center;gap:3px;font-family:var(--mono);font-size:8.5px;color:var(--muted2)}
+.sat-leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+#grl-ref-zone{
+  flex:0 0 auto;border:1px dashed var(--border2);border-radius:5px;
+  padding:5px 11px;cursor:pointer;font-family:var(--mono);font-size:11px;
+  color:var(--muted2);display:flex;align-items:center;gap:7px;
+  transition:border-color .2s,color .2s,background .2s;
+  background:var(--surface);white-space:nowrap;
+}
+#grl-ref-zone:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+#grl-ref-zone.loaded{border-color:var(--accent);color:var(--accent);border-style:solid;background:var(--accent-dim)}
+#grl-ref-label{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="logo">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <polygon points="9,1 16.5,5 16.5,13 9,17 1.5,13 1.5,5" stroke="#1a3d72" stroke-width="1.5" fill="none"/>
+      <circle cx="9" cy="9" r="2.5" fill="#1a3d72"/>
+    </svg>
+    GRL Satisfaction Analyzer
+  </div>
+  <div class="sep"></div>
+  <div id="upload-zone" onclick="document.getElementById('file-input').click()">
+    <input type="file" id="file-input" accept=".grl,.xgrl,.tgrl,.jucm,.xmi,.xml,.txt,.png,.jpg,.jpeg,.gif,.bmp,.webp">
+    <span class="icon" style="font-size:12px;flex-shrink:0">[+]</span>
+    <span id="upload-label">Drop GRL file or click to upload (.grl .xgrl .xml .txt &middot; image)</span>
+  </div>
+  <div class="sep"></div>
+  <div id="grl-ref-zone" onclick="document.getElementById('grl-ref-input').click()" title="Upload GRL introduction PDF — included in all prompts">
+    <input type="file" id="grl-ref-input" accept=".pdf" style="display:none">
+    <span style="font-size:11px;flex-shrink:0">&#128196;</span>
+    <span id="grl-ref-label">GRL Intro PDF</span>
+  </div>
+  <div class="sep"></div>
+  <div class="settings-group">
+    <label>PROVIDER</label>
+    <select id="provider-select" onchange="onProviderChange()" style="width:120px">
+      <option value="ollama">Ollama</option>
+      <option value="openai">OpenAI</option>
+    </select>
+  </div>
+  <div class="sep"></div>
+  <div class="settings-group">
+    <label>MODEL</label>
+    <select id="model" title="Model selection" onchange="onModelChange()">
+      <option value="" disabled selected>Connecting...</option>
+    </select>
+    <button id="reload-models-btn" onclick="pingBackend()" title="Refresh">&#8635;</button>
+  </div>
+  <div class="settings-group" id="url-settings">
+    <label>URL</label>
+    <input type="text" id="ollama-url" value="http://localhost:11434" style="width:150px" onchange="pingBackend()">
+  </div>
+  <div class="settings-group" id="key-settings" style="display:none">
+    <label>KEY</label>
+    <input type="password" id="api-key" placeholder="Paste API key..." style="width:180px">
+  </div>
+  <div class="sep"></div>
+  <div id="status-dot" title="Click to test connection" onclick="pingBackend()"></div>
+  <button id="ping-btn" onclick="pingBackend()">PING</button>
+  <button id="interrupt-btn" onclick="interruptLLM()" title="Abort the current LLM request">
+    <span class="stop-sq"></span>Stop
+  </button>
+  <div class="sep"></div>
+  <button id="reset-btn" onclick="resetAll()" title="Clear loaded model and all output">↺ Reset</button>
+</div>
+
+<div id="app-body">
+
+<!-- ── Image lightbox ────────────────────────────────────────────── -->
+<div id="img-lightbox" onclick="closeLightbox(event)">
+  <div id="img-lightbox-close" onclick="closeLightbox()">&#10005;</div>
+  <img id="img-lightbox-img" src="" alt="">
+  <div id="img-lightbox-fname"></div>
+</div>
+
+
+
+<!-- ── Combined Side Panel (Files + Params) ──────────────────────── -->
+<div id="side-panel" class="collapsed">
+  <!-- Narrow 32px tab column (always visible) -->
+  <div id="side-tab-col">
+    <button class="spt-btn active" data-tab="files" onclick="activateSidePanel('files')" title="Files history">
+      <div class="spt-icon">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <rect x="1.5" y="1.5" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="none"/>
+          <path d="M8.5 1.5l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M8.5 1.5v3h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </div>
+      <span class="spt-label">Files</span>
+    </button>
+    <div class="spt-divider"></div>
+    <button class="spt-btn" data-tab="params" onclick="activateSidePanel('params')" title="LLM Parameters">
+      <div class="spt-icon">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <circle cx="6.5" cy="3" r="1.5" stroke="currentColor" stroke-width="1.3"/>
+          <circle cx="6.5" cy="10" r="1.5" stroke="currentColor" stroke-width="1.3"/>
+          <line x1="1.5" y1="3" x2="5" y2="3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="8" y1="3" x2="11.5" y2="3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="1.5" y1="10" x2="5" y2="10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="8" y1="10" x2="11.5" y2="10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="4" y1="6.5" x2="9" y2="6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <circle cx="6.5" cy="6.5" r="1.5" stroke="currentColor" stroke-width="1.3"/>
+        </svg>
+      </div>
+      <span class="spt-label">Params</span>
+    </button>
+  </div>
+
+  <!-- Expanded content area -->
+  <div id="side-panel-content">
+    <!-- Shared tab header -->
+    <div id="side-panel-header">
+      <button class="sph-tab active" data-tab="files" onclick="switchSideTab('files')">
+        Files <span class="sph-count" id="sph-files-count">0</span>
+      </button>
+      <button class="sph-tab" data-tab="params" onclick="switchSideTab('params')">
+        Params
+      </button>
+      <button id="side-panel-close" onclick="closeSidePanel()" title="Close panel">&#10005;</button>
+    </div>
+
+    <!-- Files view -->
+    <div id="side-view-files" class="side-view active">
+      <div id="files-sidebar-body">
+        <div id="files-sidebar-empty">
+          <div class="fs-empty-icon">&#128247;</div>
+          <div class="fs-empty-text">Analysed images<br>will appear here</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Params view -->
+    <div id="side-view-params" class="side-view">
+      <div id="params-content">
+        <!-- Loading skeleton (shown during API probe) -->
+        <div id="params-loading">
+          <div class="skel-section">
+            <div class="skel-label w40"></div><div class="skel-bar w80"></div>
+            <div class="skel-label w55"></div><div class="skel-bar w60"></div>
+            <div class="skel-label w35"></div><div class="skel-bar w45"></div>
+          </div>
+          <div class="skel-section">
+            <div class="skel-label w40"></div><div class="skel-bar w80"></div>
+            <div class="skel-label w55"></div><div class="skel-bar w60"></div>
+          </div>
+          <div class="params-probe-note" id="probe-note">Detecting model capabilities…</div>
+        </div>
+        <div id="params-body">
+          <div id="params-no-model" class="params-no-model">
+            <div class="params-no-model-icon">&#9632;</div>
+            No model loaded
+          </div>
+        </div>
+        <div style="height:1px;flex-shrink:0"></div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;padding:6px 12px 10px;border-top:1px solid var(--border);flex-shrink:0">
+          <button class="params-reset-btn" onclick="resetParams()" title="Restore discovered defaults">↺ reset params</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /#side-panel -->
+
+<div id="main">
+  <div class="panel" id="actors-panel">
+    <div class="panel-head">
+      <span class="panel-title">Actors</span>
+      <div class="panel-meta">
+        <span id="actor-count">&mdash;</span>
+        <button class="icon-btn" id="clear-actor-btn" onclick="clearActorFilter()" style="display:none">&#10005; filter</button>
+      </div>
+    </div>
+    <div class="panel-body" id="actors-list">
+      <div class="empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#9678;</div>No model loaded</div>
+    </div>
+  </div>
+
+  <div class="panel" id="elements-panel">
+    <div class="panel-head">
+      <span class="panel-title">Intentional Elements</span>
+      <div class="panel-meta">
+        <span id="elem-count">&mdash;</span>
+        <span id="filter-pill" style="display:none"></span>
+        <button class="icon-btn" id="desel-btn" onclick="deselectAllElements()" style="display:none">deselect</button>
+        <button id="sat-mode-btn" onclick="toggleSatMode()" title="Toggle satisfaction value input mode">≋ Sat</button>
+      </div>
+    </div>
+    <!-- Legend: only visible in sat mode -->
+    <div id="sat-legend">
+      <span style="font-family:var(--mono);font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Sat:</span>
+      <span id="sat-legend-range" style="font-family:var(--mono);font-size:8.5px;color:var(--muted2)">numeric · [0;100]</span>
+      <span style="font-family:var(--mono);font-size:8px;color:var(--muted)">· outlined = user-set · filled = propagated</span>
+    </div>
+    <div class="panel-body" id="elements-list">
+      <div class="empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#9672;</div>No model loaded</div>
+    </div>
+    <!-- Run bar: only visible in sat mode -->
+    <div id="sat-run-bar">
+      <div id="sat-run-info">
+        <span id="sat-run-count" class="sat-run-count">0 values set</span>
+        <span id="sat-run-range" class="sat-run-range">[0;100]</span>
+      </div>
+      <div id="sat-run-actions">
+        <button id="sat-run-btn" onclick="runSatPropagation()" disabled>⟳ Propagate</button>
+        <button id="sat-clear-btn" onclick="clearSatValues()" title="Clear all satisfaction values">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="links-panel">
+    <div class="panel-head">
+      <span class="panel-title">Links &amp; Dependencies</span>
+      <div class="panel-meta">
+        <span id="link-count">&mdash;</span>
+        <button class="icon-btn" id="desel-link-btn" onclick="deselectLink()" style="display:none">deselect</button>
+      </div>
+    </div>
+    <div class="link-filter-row" id="link-filter-row" style="display:none">
+      <button class="lf-btn active" id="lf-all"          onclick="setLinkFilter('all')">All</button>
+      <button class="lf-btn"        id="lf-Decomposition" onclick="setLinkFilter('Decomposition')">Decomposition</button>
+      <button class="lf-btn"        id="lf-Contribution"  onclick="setLinkFilter('Contribution')">Contribution</button>
+      <button class="lf-btn"        id="lf-Dependency"    onclick="setLinkFilter('Dependency')">Dependency</button>
+    </div>
+    <div class="panel-body" id="links-list">
+      <div class="empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#8596;</div>No model loaded</div>
+    </div>
+    <div class="link-detail" id="link-detail" style="display:none"></div>
+  </div>
+
+  <div class="panel" id="query-panel">
+    <div class="panel-head">
+      <span class="panel-title">Query &amp; Analysis</span>
+    </div>
+    <textarea id="query-area" placeholder="Ask anything about the GRL model&#10;&#10;e.g. What are the main dependencies between actors?&#10;     What conflicts exist between softgoals?&#10;     How does actor X depend on actor Y?"></textarea>
+    <div class="query-footer">
+      <div id="selection-summary">No model loaded &middot; upload a GRL file to begin</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="submitQuery()">Submit Query</button>
+        <button class="btn btn-ghost" onclick="clearQueryArea()" title="Clear query text">Clear Query</button>
+      </div>
+      <button class="btn btn-primary" id="btn-elem-sat" onclick="maximizeElementSatisfaction()" disabled style="width:100%">Maximize Element Satisfaction</button>
+      <button class="btn btn-primary" id="btn-actor-sat" onclick="maximizeActorSatisfaction()" disabled style="width:100%">Maximize Actor Satisfaction</button>
+      <div class="threshold-row">
+        <button class="btn btn-primary" id="btn-threshold" onclick="reachThreshold()" disabled style="flex:1">Reach Threshold</button>
+        <input id="threshold-input" type="number" placeholder="≥ val" title="Target satisfaction threshold — select an element or actor first" />
+      </div>
+      <div id="threshold-target-label" class="param-hint" style="display:none"></div>
+      <div class="range-presets">
+        <span class="range-label" style="flex-shrink:0">Range</span>
+        <button class="range-preset-btn active" id="rp-0-100"    onclick="setRangePreset(0,100)">[0;100]</button>
+        <button class="range-preset-btn"        id="rp-n100-100" onclick="setRangePreset(-100,100)">[-100;100]</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottom-row">
+    <div class="panel" id="output-panel">
+      <div class="panel-head">
+        <span class="panel-title">Output<span class="rz-hint">↕ drag to resize</span></span>
+        <div class="panel-meta">
+          <span id="output-range-badge" class="range-badge">[0;100]</span>
+          <span id="output-status">Ready</span>
+          <button class="icon-btn" onclick="clearOutput()" title="Clear output">✕ clear</button>
+        </div>
+      </div>
+      <div id="output-body">
+        <div class="empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#9677;</div>Responses will appear here</div>
+      </div>
+    </div>
+
+    <div class="panel" id="strategy-panel">
+      <div class="panel-head">
+        <span class="panel-title">Satisfaction Strategy</span>
+        <div class="panel-meta">
+          <span id="strategy-range-badge" class="range-badge">[0;100]</span>
+          <button class="icon-btn" onclick="clearStrategy()" title="Close strategy panel">&#10005;</button>
+        </div>
+      </div>
+      <div id="strategy-body">
+        <div class="strat-panel-empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#9650;</div>Run a maximize to see strategy</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="v-resize" id="vr1" title="Drag to resize Actors / Elements"></div>
+  <div class="v-resize" id="vr2" title="Drag to resize Elements / Links"></div>
+  <div class="v-resize" id="vr3" title="Drag to resize Links / Query"></div>
+  <div class="v-resize" id="vr4" title="Drag to resize Output / Strategy" style="display:none"></div>
+</div><!-- /#main -->
+
+
+</div><!-- /#app-body -->
+
+<script>
+'use strict';
+
+const S = {
+  actors: [], elements: [], links: [],
+  selectedActorId: null, selectedElemIds: new Set(), selectedLinkId: null,
+  linkFilter: 'all',
+  imageBase64: null, imageMimeType: null, fileName: null, busy: false,
+  satRange: '0:100',
+  provider: 'ollama',
+  satMode: false,
+  satValues: {},      // elemId → number (user-set, within satRange)
+  satPropagated: {},  // elemId → number (LLM-propagated)
+  _actorSat: {},      // actorId → number (computed avg from propagation)
+  grlRefPdf: null,   // base64 of user-uploaded GRL intro PDF
+  grlJson: null,     // JSON string of parsed model — context block for all prompts
+  _pdfIgnored: false,// set true when openaiStream silently retried without the PDF
+};
+let S_abortCtrl = null;
+
+// ── LLM Hyperparameters — API-discovered ──────────────────────────────────
+
+// All params we know how to render, with their slider config and neutral probe values.
+// Visibility is determined purely by what the API accepts — nothing is hardcoded per model.
+const PARAM_META = {
+  reasoning_effort: { type: 'effort',  section: 'Reasoning',       label: 'Reasoning Effort',    hint: 'Compute budget for internal chain-of-thought',          probe: 'medium'  },
+  temperature:      { type: 'slider',  section: 'Sampling',        label: 'Temperature',          hint: 'Output randomness — 0 = deterministic',                 probe: 1.0,  min: 0,   max: 2,     step: 0.01  },
+  top_p:            { type: 'slider',  section: 'Sampling',        label: 'Top-P (Nucleus)',      hint: 'Cumulative probability cutoff for token sampling',       probe: 1.0,  min: 0,   max: 1,     step: 0.01  },
+  top_k:            { type: 'slider',  section: 'Sampling',        label: 'Top-K',                hint: 'Limit vocab to top K tokens per step — 0 = disabled',   probe: 0,    min: 0,   max: 100,   step: 1     },
+  max_tokens:       { type: 'slider',  section: 'Output',          label: 'Max Tokens',           hint: 'Max response length',                                   probe: 4096, min: 256, max: 32768, step: 256   },
+  repeat_last_n:    { type: 'slider',  section: 'Output',          label: 'Repeat Last N',        hint: 'Context window for repetition detection — 0 = disabled', probe: 64,  min: 0,   max: 512,   step: 8     },
+  frequency_penalty:{ type: 'slider',  section: 'Penalties',       label: 'Frequency Penalty',    hint: 'Penalises tokens proportional to their frequency',       probe: 0,    min: -2,  max: 2,     step: 0.05  },
+  presence_penalty: { type: 'slider',  section: 'Penalties',       label: 'Presence Penalty',     hint: 'Flat penalty for any token already in the output',       probe: 0,    min: -2,  max: 2,     step: 0.05  },
+  repeat_penalty:   { type: 'slider',  section: 'Penalties',       label: 'Repeat Penalty',       hint: 'Multiplicative penalty for repeated tokens',             probe: 1.1,  min: 0.5, max: 2,     step: 0.05  },
+  seed:             { type: 'text',    section: 'Reproducibility',  label: 'Seed',                 hint: 'Integer seed for deterministic output',                  probe: null  },
+};
+
+// All param keys in display order
+const ALL_PARAM_KEYS = Object.keys(PARAM_META);
+// Set for fast lookup when parsing error messages
+const ALL_PARAM_SET  = new Set(ALL_PARAM_KEYS);
+
+// Live values — populated after discovery
+const P = { reasoning_effort: 'medium', seed: null };
+for (const [k, m] of Object.entries(PARAM_META)) if (m.probe !== null && m.type === 'slider') P[k] = m.probe;
+function getParams() { return P; }
+
+// ── Effort button group ────────────────────────────────────────────────────
+function setEffort(level) {
+  P.reasoning_effort = level;
+  document.querySelectorAll('.effort-btn').forEach(b => b.classList.toggle('active', b.dataset.effort === level));
+}
+
+// ── Loading state ──────────────────────────────────────────────────────────
+function setParamsLoading(on, note) {
+  document.getElementById('params-loading').classList.toggle('active', on);
+  document.getElementById('params-body').classList.toggle('loading', on);
+  if (note) document.getElementById('probe-note').textContent = note;
+}
+
+// ── Dynamic panel builder ──────────────────────────────────────────────────
+// Renders only the discovered params into #params-body, in section groups.
+function buildParamPanel(supported, defaults) {
+  const body = document.getElementById('params-body');
+  body.innerHTML = '';
+
+  // Group by section
+  const sections = {};
+  for (const key of ALL_PARAM_KEYS) {
+    if (!supported.has(key)) continue;
+    const m = PARAM_META[key];
+    if (!sections[m.section]) sections[m.section] = [];
+    sections[m.section].push(key);
+  }
+
+  for (const [sectionName, keys] of Object.entries(sections)) {
+    const sec = document.createElement('div');
+    sec.className = 'params-section';
+    sec.dataset.section = sectionName.toLowerCase();
+
+    const title = document.createElement('div');
+    title.className = 'params-section-title';
+    title.textContent = sectionName;
+    sec.appendChild(title);
+
+    for (const key of keys) {
+      const m = PARAM_META[key];
+      const val = defaults[key] !== undefined ? defaults[key] : m.probe;
+
+      const row = document.createElement('div');
+      row.className = 'param-row';
+      row.dataset.param = key;
+
+      if (m.type === 'slider') {
+        const curVal = typeof val === 'number' ? val : m.probe;
+        const isInt = Number.isInteger(m.probe);
+        const fmt = isInt ? String(Math.round(curVal)) : curVal.toFixed(2);
+        const pct  = ((curVal - m.min) / (m.max - m.min) * 100).toFixed(1);
+        P[key] = curVal;
+        row.innerHTML = `
+          <div class="param-label-row">
+            <label class="param-label">${m.label}</label>
+            <span class="param-value" id="val-${key}">${fmt}</span>
+          </div>
+          <input type="range" class="param-slider" id="param-${key}"
+            min="${m.min}" max="${m.max}" step="${m.step}" value="${curVal}"
+            style="--pct:${pct}%"
+            oninput="onParamSlider('${key}',this)">
+          <div class="param-hint">${m.hint}</div>`;
+
+      } else if (m.type === 'effort') {
+        P.reasoning_effort = 'medium';
+        row.innerHTML = `
+          <div class="param-label-row" style="margin-bottom:6px">
+            <label class="param-label">${m.label}</label>
+          </div>
+          <div class="effort-group">
+            <button class="effort-btn" data-effort="low"    onclick="setEffort('low')">Low</button>
+            <button class="effort-btn active" data-effort="medium" onclick="setEffort('medium')">Med</button>
+            <button class="effort-btn" data-effort="high"   onclick="setEffort('high')">High</button>
+          </div>
+          <div class="param-hint">${m.hint}</div>`;
+
+      } else if (m.type === 'text') {
+        P.seed = null;
+        row.innerHTML = `
+          <div class="param-label-row" style="margin-bottom:5px">
+            <label class="param-label">${m.label}</label>
+          </div>
+          <input type="text" class="param-text-input" id="param-${key}"
+            placeholder="Leave empty for random…" pattern="-?[0-9]*"
+            oninput="onParamSeed(this)">
+          <div class="param-hint">${m.hint}</div>`;
+      }
+
+      sec.appendChild(row);
+    }
+    body.appendChild(sec);
+  }
+}
+
+// ── Probe helpers ──────────────────────────────────────────────────────────
+// Extract which param name an API error message is complaining about.
+function extractBadParam(errMsg) {
+  const patterns = [
+    /\b(reasoning_effort|temperature|top_p|top_k|frequency_penalty|presence_penalty|repeat_penalty|repeat_last_n|seed)\b.*(?:not supported|not allowed|invalid|unknown|unexpected)/i,
+    /(?:not supported|not allowed|invalid|unknown|unexpected).*\b(reasoning_effort|temperature|top_p|top_k|frequency_penalty|presence_penalty|repeat_penalty|repeat_last_n|seed)\b/i,
+    /['"`](reasoning_effort|temperature|top_p|top_k|frequency_penalty|presence_penalty|repeat_penalty|repeat_last_n|seed)['"`]/i,
+  ];
+  for (const p of patterns) {
+    const m = errMsg.match(p);
+    if (m) return [m[1], m[2]].find(x => x && ALL_PARAM_SET.has(x)) || null;
+  }
+  return null;
+}
+
+// Build an OpenAI-style probe body with the given candidate params
+function buildOpenAIProbeBody(model, candidateParams) {
+  const isO = /^o\d|^o1|^o3|^o4|^gpt-5/i.test(model);
+  const body = {
+    model, stream: false,
+    messages: [{ role: 'user', content: 'hi' }],
+    [isO ? 'max_completion_tokens' : 'max_tokens']: 1,
+  };
+  // For o-series/gpt-5 reasoning models, never probe sampling params — they are not supported
+  const SAMPLING_PARAMS = new Set(['temperature','top_p','frequency_penalty','presence_penalty']);
+  for (const k of candidateParams) {
+    if (k === 'max_tokens' || k === 'seed') continue; // handled separately
+    if (isO && SAMPLING_PARAMS.has(k)) continue;      // reasoning models don't use these
+    const m = PARAM_META[k];
+    if (m?.probe !== null) body[k] = m.probe;
+  }
+  return body;
+}
+
+// ── Provider-specific discovery ────────────────────────────────────────────
+async function discoverOllama(model) {
+  try {
+    const res = await fetch(ollamaUrl() + '/api/show', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: model }),
+    });
+    if (!res.ok) throw new Error('show failed');
+    const data = await res.json();
+
+    const OLLAMA_MAP = {
+      temperature:   'temperature',
+      top_p:         'top_p',
+      top_k:         'top_k',
+      num_predict:   'max_tokens',
+      repeat_last_n: 'repeat_last_n',
+      repeat_penalty:'repeat_penalty',
+    };
+
+    const supported = new Set(['max_tokens', 'seed']);
+    const defaults  = {};
+
+    for (const line of (data.parameters || '').split('\n')) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 2) continue;
+      const mapped = OLLAMA_MAP[parts[0]];
+      if (mapped) {
+        supported.add(mapped);
+        const v = parseFloat(parts[1]);
+        if (!isNaN(v)) defaults[mapped] = v;
+      }
+    }
+    return { supported, defaults };
+  } catch (_) {
+    // Fallback: show the typical Ollama param set
+    return {
+      supported: new Set(['temperature','top_p','top_k','max_tokens','repeat_last_n','repeat_penalty','seed']),
+      defaults:  {},
+    };
+  }
+}
+
+async function discoverOpenAI(model, key) {
+  const isO = /^o\d|^o1|^o3|^o4|^gpt-5/i.test(model);
+  const supported = new Set(['max_tokens', 'seed']);
+  // For reasoning models only probe reasoning_effort; for standard models probe sampling params
+  let candidates = isO
+    ? new Set(['reasoning_effort'])
+    : new Set(['temperature','top_p','frequency_penalty','presence_penalty']);
+
+  for (let i = 0; i < candidates.size + 1; i++) {
+    const body = buildOpenAIProbeBody(model, candidates);
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) { for (const k of candidates) supported.add(k); break; }
+      const errData = await res.json().catch(() => ({}));
+      const errMsg  = errData?.error?.message || JSON.stringify(errData);
+      const bad     = extractBadParam(errMsg);
+      if (!bad || !candidates.has(bad)) { for (const k of candidates) supported.add(k); break; }
+      candidates.delete(bad);
+    } catch (_) { for (const k of candidates) supported.add(k); break; }
+  }
+  return { supported, defaults: {} };
+}
+
+// ── Main discovery entry point ─────────────────────────────────────────────
+function showParamsNoModel() {
+  setParamsLoading(false);
+  const body = document.getElementById('params-body');
+  body.innerHTML = '<div class="params-no-model"><div class="params-no-model-icon">&#9632;</div>No model loaded</div>';
+}
+
+async function discoverAndApply(model, provider) {
+  if (!model) { showParamsNoModel(); return; }
+  setParamsLoading(true, 'Detecting model capabilities…');
+  try {
+    let result;
+    const key = getApiKey();
+    if      (provider === 'ollama')  result = await discoverOllama(model);
+    else if (provider === 'openai')  result = key ? await discoverOpenAI(model, key) : { supported: new Set(ALL_PARAM_KEYS), defaults: {} };
+    else result = { supported: new Set(ALL_PARAM_KEYS), defaults: {} };
+
+    buildParamPanel(result.supported, result.defaults);
+    setParamsLoading(false);
+  } catch (e) {
+    setParamsLoading(false, 'Discovery failed — showing all params');
+    buildParamPanel(new Set(ALL_PARAM_KEYS), {});
+  }
+}
+
+function onModelChange()    { discoverAndApply(getModel(), S.provider); }
+function resetParams()       { discoverAndApply(getModel(), S.provider); }
+function initParamSliders()  { showParamsNoModel(); }
+
+function onParamSlider(key, el) {
+  const v = parseFloat(el.value);
+  P[key] = v;
+  const m = PARAM_META[key];
+  const isInt = m ? Number.isInteger(m.probe) : false;
+  const badge = document.getElementById('val-' + key);
+  if (badge) badge.textContent = isInt ? String(Math.round(v)) : v.toFixed(2);
+  const min = parseFloat(el.min), max = parseFloat(el.max);
+  el.style.setProperty('--pct', ((v - min) / (max - min) * 100).toFixed(1) + '%');
+}
+
+function onParamSeed(el) {
+  const v = el.value.trim();
+  P.seed = (v === '' || isNaN(parseInt(v))) ? null : parseInt(v);
+}
+
+
+// ── Satisfaction Propagation ───────────────────────────────────────────────
+// ── Numeric sat helpers ────────────────────────────────────────────────────
+function getSatRange() {
+  // S.satRange is stored as "min:max" e.g. "0:100" or "-100:100"
+  const parts = (S.satRange || '0:100').split(':');
+  const min = parseInt(parts[0]);
+  const max = parseInt(parts[1]);
+  return { min: isNaN(min) ? 0 : min, max: isNaN(max) ? 100 : max };
+}
+function satNumColor(v) {
+  const {min, max} = getSatRange();
+  const pct = (v - min) / (max - min); // 0..1
+  if (pct >= 0.75) return 'var(--green)';
+  if (pct >= 0.5)  return '#2e7d52';
+  if (pct >= 0.25) return 'var(--orange)';
+  return 'var(--red)';
+}
+function clampSat(v) {
+  const {min, max} = getSatRange();
+  return Math.max(min, Math.min(max, Math.round(v)));
+}
+
+function toggleSatMode() {
+  S.satMode = !S.satMode;
+  document.getElementById('sat-mode-btn').classList.toggle('active', S.satMode);
+  document.getElementById('elements-panel').classList.toggle('sat-mode', S.satMode);
+  renderElements();
+  updateSatRunBtn();
+}
+
+function setSatValue(elemId, value) {
+  if (value === null || value === undefined || value === '') {
+    delete S.satValues[elemId];
+  } else {
+    S.satValues[elemId] = clampSat(Number(value));
+  }
+  updateSatRunBtn();
+  // Refresh the input row to reflect clear/color state
+  const row = document.querySelector(`.sat-row[data-elem="${CSS.escape(elemId)}"]`);
+  if (row) renderSatInput(row, elemId);
+  // Update badge
+  const badge = document.querySelector(`.sat-badge[data-elem="${CSS.escape(elemId)}"]`);
+  if (badge) applySatBadge(badge, elemId);
+}
+
+function onSatNumInput(elemId, el) {
+  const v = el.value.trim();
+  if (v === '' || isNaN(Number(v))) {
+    delete S.satValues[elemId];
+    el.classList.remove('has-val');
+    el.style.removeProperty('--sat-c');
+  } else {
+    const num = clampSat(Number(v));
+    S.satValues[elemId] = num;
+    const c = satNumColor(num);
+    el.classList.add('has-val');
+    el.style.setProperty('--sat-c', c);
+  }
+  updateSatRunBtn();
+  const badge = document.querySelector(`.sat-badge[data-elem="${CSS.escape(elemId)}"]`);
+  if (badge) applySatBadge(badge, elemId);
+}
+
+function renderSatInput(container, elemId) {
+  const {min, max} = getSatRange();
+  const userVal = S.satValues[elemId];
+  const hasVal  = userVal !== undefined && userVal !== null;
+  const color   = hasVal ? satNumColor(userVal) : '';
+  const colorStyle = hasVal ? `style="--sat-c:${color}"` : '';
+  container.innerHTML =
+    `<div class="sat-num-wrap">` +
+    `<input type="number" class="sat-num-input${hasVal?' has-val':''}" ${colorStyle}` +
+    ` min="${min}" max="${max}" step="1"` +
+    ` value="${hasVal ? userVal : ''}" placeholder="${min}…${max}"` +
+    ` oninput="onSatNumInput('${esc(elemId)}',this)" onclick="event.stopPropagation()">` +
+    (hasVal ? `<button class="sat-num-clear" onclick="event.stopPropagation();setSatValue('${esc(elemId)}',null)" title="Clear">&times;</button>` : '') +
+    `<span class="sat-num-hint">[${min}; ${max}]</span>` +
+    `</div>`;
+}
+
+function applySatBadge(badge, elemId) {
+  const propVal = S.satPropagated[elemId];
+  const userVal = S.satValues[elemId];
+  const showVal = propVal !== undefined ? propVal : userVal;
+  if (showVal === undefined || showVal === null) { badge.style.display = 'none'; return; }
+  badge.style.display = '';
+  const color   = satNumColor(showVal);
+  const isUser  = userVal !== undefined && propVal === undefined;
+  badge.className = 'sat-badge' + (isUser ? ' val-user' : '');
+  badge.style.setProperty('--sat-c', color);
+  badge.title = (propVal !== undefined ? 'Propagated: ' : 'User-set: ') + showVal;
+  badge.textContent = String(showVal);
+}
+
+function updateSatRunBtn() {
+  const btn = document.getElementById('sat-run-btn');
+  if (!btn) return;
+  const count = Object.keys(S.satValues).length;
+  const hasAny = count > 0;
+  const hasModel = !!S.elements.length;
+  btn.disabled = !hasAny || !hasModel || S.busy;
+  // Update count badge
+  const countEl = document.getElementById('sat-run-count');
+  if (countEl) countEl.textContent = hasAny ? count + ' value' + (count !== 1 ? 's' : '') + ' set' : 'No values set';
+  // Update range badge
+  const {min, max} = getSatRange();
+  const rb = document.getElementById('sat-run-range');
+  if (rb) rb.textContent = `[${min} – ${max}]`;
+}
+
+function clearSatValues() {
+  S.satValues = {};
+  S.satPropagated = {};
+  S._actorSat = {};
+  renderActors();
+  renderElements();
+  updateSatRunBtn();
+}
+
+// ── GRL propagation rules — fallback text used only when no reference PDF is attached ──
+const GRL_PROPAGATION_RULES = [
+  'Apply the following GRL satisfaction propagation rules (bottom-up, leaves → roots):',
+  '1. [SEED=x] elements are fixed leaf inputs — their satisfaction value is x.',
+  '2. AND-decomposition parent: value = min of all child values.',
+  '3. OR-decomposition parent:  value = max of all child values.',
+  '4. Contribution links: sum (source_value × weight/100) across all sources contributing to a target.',
+  '5. Dependency links: the depender\'s value cannot exceed the dependee\'s value.',
+  '6. Clamp all computed values to the evaluation range.',
+  '7. Only propagate to elements reachable from at least one [SEED=x] element; omit all others.',
+].join('\n');
+
+// ── GRL notation rules — fallback text used only when no reference PDF is attached ──
+const GRL_NOTATION_RULES = [
+  'GRL visual notation reference:',
+  'ELEMENT SHAPES:',
+  '- Actor: large circle with a stick figure at the top.',
+  '- Goal: rounded rectangle.',
+  '- SoftGoal: cloud-shaped (wavy/irregular) rounded rectangle.',
+  '- Task: hexagon.',
+  '- Resource: plain rectangle.',
+  'LINK TYPES:',
+  '- Contribution: arrow with a signed numeric label (+100 Make, +75 SomePositive, +25 Help, -25 Hurt, -75 SomeNegative, -100 Break).',
+  '- Decomposition: line with a T-end (crossbar at the child end); junction labeled And, Or, or Xor.',
+  '- Dependency: filled arrowhead from depender element/actor to dependee element/actor.',
+].join('\n');
+
+// ── LLM propagation ────────────────────────────────────────────────────────
+async function runSatPropagation() {
+  if (S.busy) return;
+
+  const userSet = Object.entries(S.satValues);
+  if (!userSet.length) return;
+
+  const elemMap     = new Map(S.elements.map(e => [e.id, e]));
+  const {min, max}  = getSatRange();
+  const filledCount = userSet.length;
+  const totalCount  = S.elements.length;
+
+  const ctx = buildCtx();
+  const hasPdf = !!S.grlRefPdf;
+
+  const seedLines = S.elements.map(e => {
+    const uv = S.satValues[e.id];
+    return `  ${e.id} (${e.name}): ${uv !== undefined ? `[SEED=${uv}]` : '[UNFILLED]'}`;
+  }).join('\n');
+
+  const prompt = [
+    'Perform GRL satisfaction value propagation.',
+    hasPdf
+      ? 'Apply the propagation rules defined in the attached GRL reference document.'
+      : GRL_PROPAGATION_RULES,
+    `Satisfaction values are integers in [${min}; ${max}].`,
+    '',
+    ctx,
+    '',
+    'Satisfaction seeds:',
+    '- [SEED=x]: element has a fixed satisfaction value of x (leaf input).',
+    '- [UNFILLED]: no assigned value — compute from graph or omit if unreachable.',
+    '',
+    seedLines,
+    '',
+    'OVERRIDE DETECTION:',
+    'After computing bottom-up, if a [SEED=x] element\'s computed value (from its children)',
+    'differs from its seed x, report it in "overrides". The COMPUTED value is authoritative.',
+    '',
+    'Respond with ONLY this JSON — no prose, no markdown fences:',
+    '{"propagation":{"ELEM_ID":NUMBER,...},"overrides":[{"id":"ELEM_ID","userValue":X,"computedValue":Y,"note":"reason"}],"reasoning":"brief (max 3 sentences)"}',
+    `- "propagation": include only elements with a computed value. Omit unreachable [UNFILLED] elements.`,
+    `- "overrides": include [SEED=x] elements whose bottom-up result ≠ x.`,
+    `- All NUMBERs must be integers in [${min}; ${max}].`,
+  ].join('\n');
+
+  S.busy = true;
+  setBusy(true, 'Propagating satisfaction values…');
+  updateSatRunBtn();
+
+  // ── Pre-flight card: show which elements are seeded vs. pending
+  const preEntry = appendMsg('', false);
+  const preLbl   = preEntry.querySelector('.output-label');
+  preLbl.textContent = `⟳ Propagating — ${filledCount} seed value${filledCount !== 1 ? 's' : ''} / ${totalCount} element${totalCount !== 1 ? 's' : ''}`;
+
+  const preDiv = document.createElement('div');
+  let preHtml  = `<div style="font-family:var(--mono);font-size:8.5px;color:var(--muted);margin-bottom:5px;display:flex;gap:10px;flex-wrap:wrap">`;
+  preHtml += `<span><span style="color:var(--green)">●</span> seeded (${filledCount})</span>`;
+  preHtml += `<span><span style="color:var(--border2)">●</span> to propagate (${totalCount - filledCount})</span>`;
+  preHtml += `<span><span style="color:var(--muted)">—</span> will default to 0 if unreachable</span>`;
+  preHtml += `</div><div style="display:flex;flex-wrap:wrap;gap:3px">`;
+  for (const e of S.elements) {
+    const uv     = S.satValues[e.id];
+    const hasVal = uv !== undefined;
+    const bg     = hasVal ? 'var(--green-dim)'  : 'var(--surface)';
+    const border = hasVal ? 'rgba(24,92,60,.3)' : 'var(--border2)';
+    const color  = hasVal ? 'var(--green)'      : 'var(--muted)';
+    preHtml += `<span style="font-family:var(--mono);font-size:8.5px;padding:2px 6px;border-radius:3px;border:1px solid ${border};color:${color};background:${bg};white-space:nowrap">`;
+    preHtml += esc(e.name);
+    if (hasVal) preHtml += ` <strong>${uv}</strong>`;
+    preHtml += `</span>`;
+  }
+  preHtml += `</div>`;
+  preDiv.innerHTML = preHtml;
+  preEntry.appendChild(preDiv);
+  scrollOut();
+
+  // ── Streaming placeholder
+  const streamEntry = appendMsg('', true);
+  const textEl = streamEntry.querySelector('.output-text');
+  textEl.textContent = '⟳ Receiving propagation data…';
+
+  try {
+    let full = '';
+    await llmStream(prompt, null, (_, f) => {
+      full = f;
+      textEl.textContent = '⟳ Receiving propagation data…';
+      scrollOut();
+    }, S.grlRefPdf);
+    textEl.classList.remove('streaming');
+    streamEntry.remove();
+
+    // ── Parse LLM response
+    let parsed = null;
+    try {
+      const clean = full.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+      const start = clean.indexOf('{');
+      if (start !== -1) parsed = JSON.parse(clean.slice(start));
+    } catch (_) {}
+
+    if (parsed?.propagation) {
+      S.satPropagated = {};
+      const overrides   = Array.isArray(parsed.overrides) ? parsed.overrides : [];
+      const overrideMap = new Map(overrides.map(o => [o.id, o]));
+
+      // Apply LLM-computed values
+      for (const [id, v] of Object.entries(parsed.propagation)) {
+        const num = typeof v === 'number' ? v : Number(v);
+        if (!isNaN(num)) S.satPropagated[id] = clampSat(num);
+      }
+
+      // Post-propagation: any element still without a value → default 0 (clearly labeled)
+      const defaultedIds = new Set();
+      for (const e of S.elements) {
+        if (S.satPropagated[e.id] === undefined && S.satValues[e.id] === undefined) {
+          S.satPropagated[e.id] = 0;
+          defaultedIds.add(e.id);
+        }
+      }
+
+      // Actor-level satisfaction — importance-weighted average over elements that
+      // have an importance value; falls back to simple average if none do.
+      const actorSat = {};
+      for (const a of S.actors) {
+        const aElems = S.elements.filter(e => e.actorId === a.id);
+        if (!aElems.length) continue;
+        const getFv = e => {
+          const pv = S.satPropagated[e.id];
+          const uv = S.satValues[e.id];
+          return pv !== undefined ? pv : (uv !== undefined ? uv : 0);
+        };
+        const weighted = aElems.filter(e => e.importance != null);
+        if (weighted.length) {
+          const totalW      = weighted.reduce((s, e) => s + e.importance, 0);
+          const weightedSum = weighted.reduce((s, e) => s + getFv(e) * e.importance, 0);
+          actorSat[a.id]    = totalW > 0 ? Math.round(weightedSum / totalW) : 0;
+        } else {
+          // No importance values on any element — actor sat is 0
+          actorSat[a.id] = 0;
+        }
+      }
+
+      // ── Build rich output HTML ───────────────────────────────────────────
+      const reasoning = parsed.reasoning || '';
+      const {min: rMin, max: rMax} = getSatRange();
+
+      const satColorInline = v => {
+        const pct = (v - rMin) / (rMax - rMin);
+        if (pct >= 0.75) return 'var(--green)';
+        if (pct >= 0.5)  return '#2e7d52';
+        if (pct >= 0.25) return 'var(--orange)';
+        return 'var(--red)';
+      };
+      const satBar = v => {
+        const pct = Math.max(0, Math.min(100, ((v - rMin) / (rMax - rMin)) * 100));
+        return `<span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle">` +
+               `<span style="display:inline-block;width:52px;height:5px;border-radius:2px;background:var(--border2);overflow:hidden;vertical-align:middle">` +
+               `<span style="display:block;width:${pct}%;height:100%;border-radius:2px;background:${satColorInline(v)}"></span></span>` +
+               `<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${satColorInline(v)}">${v}</span>` +
+               `</span>`;
+      };
+
+      const propagatedCount = Object.keys(S.satPropagated).length - defaultedIds.size;
+
+      // Summary header
+      let html = `<div style="margin-bottom:6px;font-family:var(--mono);font-size:10px;color:var(--muted2);font-weight:600;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:8px;flex-wrap:wrap">`;
+      html += `Propagation Results`;
+      html += `<span style="font-weight:400;color:var(--muted);font-size:8.5px">`;
+      html += `${filledCount} seeded · ${propagatedCount} propagated`;
+      if (defaultedIds.size) html += ` · ${defaultedIds.size} defaulted→0`;
+      if (overrides.length)  html += ` · <span style="color:var(--orange)">${overrides.length} override${overrides.length !== 1 ? 's' : ''}</span>`;
+      html += `</span></div>`;
+
+      // Overrides section (shown prominently if any)
+      if (overrides.length) {
+        html += `<div style="margin-bottom:10px;border:1px solid rgba(168,74,0,.35);border-radius:5px;overflow:hidden">`;
+        html += `<div style="padding:5px 10px;background:rgba(168,74,0,.07);border-bottom:1px solid rgba(168,74,0,.25);font-family:var(--mono);font-size:9px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.06em">`;
+        html += `⚠ Override${overrides.length !== 1 ? 's' : ''} — bottom-up value differs from user input`;
+        html += `</div>`;
+        for (const ov of overrides) {
+          const oe  = elemMap.get(ov.id);
+          const cov = typeof ov.computedValue === 'number' ? ov.computedValue : ov.userValue;
+          html += `<div style="padding:5px 10px;border-bottom:1px solid rgba(168,74,0,.12)">`;
+          html += `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">`;
+          html += `<span style="font-size:11px;flex:1;min-width:0;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(oe ? oe.name : ov.id)}</span>`;
+          html += `<span style="font-family:var(--mono);font-size:8.5px;color:var(--muted)">user:</span>`;
+          html += `<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--orange);text-decoration:line-through">${ov.userValue}</span>`;
+          html += `<span style="font-family:var(--mono);font-size:8.5px;color:var(--muted)">→ bottom-up:</span>`;
+          html += satBar(cov);
+          html += `</div>`;
+          if (ov.note) html += `<div style="font-family:var(--mono);font-size:8.5px;color:var(--muted);margin-top:2px;line-height:1.5">${esc(ov.note)}</div>`;
+          html += `</div>`;
+        }
+        html += `</div>`;
+      }
+
+      // Shared element-row renderer
+      const TYPE_COLORS = {Goal:'rgba(26,61,114,.1);color:var(--goal)',SoftGoal:'rgba(72,40,128,.1);color:var(--softgoal)',Task:'rgba(168,74,0,.1);color:var(--task)',Resource:'rgba(24,92,60,.1);color:var(--resource)',Belief:'rgba(122,26,82,.1);color:var(--belief)'};
+      const renderElemRow = e => {
+        const pv         = S.satPropagated[e.id];
+        const uv         = S.satValues[e.id];
+        const fv         = pv !== undefined ? pv : (uv !== undefined ? uv : 0);
+        const isUser     = uv !== undefined && pv === undefined;      // seed, not overridden
+        const isDefault  = defaultedIds.has(e.id);                   // unreachable → 0
+        const isOverride = overrideMap.has(e.id);                    // bottom-up ≠ user seed
+        const tc         = (TYPE_COLORS[e.type] || TYPE_COLORS['Goal']).split(';');
+        let row = `<div style="display:flex;align-items:center;gap:7px;padding:4px 9px;border-bottom:1px solid var(--border)">`;
+        row += `<span style="font-family:var(--mono);font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:${tc[0]};${tc[1]};text-transform:uppercase;flex-shrink:0;min-width:54px;text-align:center">${esc(e.type)}</span>`;
+        row += `<span style="font-size:11.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.name)}">${esc(e.name)}</span>`;
+        if (isOverride) {
+          const ov = overrideMap.get(e.id);
+          row += `<span style="font-family:var(--mono);font-size:8px;color:var(--orange);flex-shrink:0" title="Override: user=${ov.userValue}, bottom-up=${ov.computedValue}">⚠</span>`;
+        } else if (isUser) {
+          row += `<span style="font-family:var(--mono);font-size:8px;color:var(--task);flex-shrink:0" title="Seed (user-set)">●</span>`;
+        } else if (isDefault) {
+          row += `<span style="font-family:var(--mono);font-size:8px;color:var(--muted);flex-shrink:0" title="Unreachable — defaulted to 0">—</span>`;
+        }
+        row += satBar(fv);
+        row += `</div>`;
+        return row;
+      };
+
+      // Per-actor blocks
+      for (const a of S.actors) {
+        const aElems = S.elements.filter(e => e.actorId === a.id);
+        if (!aElems.length) continue;
+        const avgV = actorSat[a.id];
+        html += `<div style="margin-bottom:8px;border:1px solid var(--border);border-radius:5px;overflow:hidden">`;
+        html += `<div style="display:flex;align-items:center;gap:8px;padding:5px 9px;background:var(--surface);border-bottom:1px solid var(--border)">`;
+        html += `<span style="font-size:12px;font-weight:600;flex:1;color:var(--text)">${esc(a.name)}</span>`;
+        html += `<span style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-right:4px">actor avg</span>`;
+        html += satBar(avgV);
+        html += `</div>`;
+        for (const e of aElems) html += renderElemRow(e);
+        html += `</div>`;
+      }
+
+      // Unlinked (orphan) elements
+      const orphans = S.elements.filter(e => !e.actorId);
+      if (orphans.length) {
+        html += `<div style="margin-bottom:8px;border:1px solid var(--border);border-radius:5px;overflow:hidden">`;
+        html += `<div style="padding:5px 9px;background:var(--surface);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--muted2)">Unlinked Elements</div>`;
+        for (const e of orphans) html += renderElemRow(e);
+        html += `</div>`;
+      }
+
+      if (reasoning) {
+        html += `<div style="font-family:var(--mono);font-size:9.5px;color:var(--muted);line-height:1.6;margin-top:4px;padding:6px 8px;background:var(--surface);border-radius:4px;border:1px solid var(--border)">${esc(reasoning)}</div>`;
+      }
+
+      // Update pre-flight entry label to reflect final stats
+      const overrideNote  = overrides.length    ? ` · ${overrides.length} override${overrides.length !== 1 ? 's' : ''}` : '';
+      const defaultedNote = defaultedIds.size   ? ` · ${defaultedIds.size} defaulted→0` : '';
+      preLbl.textContent  = `✓ ${filledCount} seeded · ${propagatedCount} propagated${defaultedNote}${overrideNote}`;
+
+      // Append rich results entry
+      const richEntry = document.createElement('div');
+      richEntry.className = 'output-entry';
+      const lbl2 = document.createElement('div');
+      lbl2.className  = 'output-label';
+      lbl2.textContent = `✓ Propagation complete — ${S.elements.length} element(s) · ${S.actors.length} actor(s)`;
+      richEntry.appendChild(lbl2);
+      const contentDiv = document.createElement('div');
+      contentDiv.innerHTML = html;
+      richEntry.appendChild(contentDiv);
+      document.getElementById('output-body').appendChild(richEntry);
+      scrollOut();
+
+      // Re-render panels with updated badges and actor-sat
+      S._actorSat = actorSat;
+      renderActors();
+      renderElements();
+    } else {
+      streamEntry.remove();
+      appendMsg('⚠ Could not parse propagation result. Check that the model returned valid JSON.');
+    }
+  } catch (err) {
+    textEl.classList.remove('streaming');
+    if (err.name === 'AbortError') {
+      textEl.textContent = '[— interrupted —]';
+    } else {
+      appendMsg('Error during propagation: ' + err.message);
+    }
+  } finally {
+    setBusy(false); S.busy = false;
+    updateSatRunBtn();
+  }
+}
+
+// ── Combined Side Panel ────────────────────────────────────────────────────
+let _sidePanelOpen = false;
+let _sideActiveTab = 'files';
+
+function activateSidePanel(tab) {
+  const panel = document.getElementById('side-panel');
+  // If already open on this tab → close (toggle)
+  if (_sidePanelOpen && _sideActiveTab === tab) {
+    closeSidePanel();
+    return;
+  }
+  // Otherwise open (or switch tab)
+  _sidePanelOpen = true;
+  panel.classList.remove('collapsed');
+  _animateSidePanel();
+  switchSideTab(tab);
+}
+
+function closeSidePanel() {
+  const panel = document.getElementById('side-panel');
+  _sidePanelOpen = false;
+  panel.classList.add('collapsed');
+  _animateSidePanel();
+}
+
+function switchSideTab(tab) {
+  _sideActiveTab = tab;
+  // Update narrow column buttons
+  document.querySelectorAll('.spt-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  // Update header tab buttons
+  document.querySelectorAll('.sph-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  // Switch views
+  document.querySelectorAll('.side-view').forEach(v => v.classList.remove('active'));
+  const view = document.getElementById('side-view-' + tab);
+  if (view) view.classList.add('active');
+}
+
+function _animateSidePanel() {
+  const DURATION = 240;
+  const start = performance.now();
+  (function tick(now) {
+    const main  = document.getElementById('main');
+    const total = main.offsetWidth;
+    const fixed = LS.cols[0] + LS.cols[2] + LS.cols[3];
+    LS.cols[1]  = Math.max(80, total - fixed);
+    applyLayout();
+    if (now - start < DURATION) requestAnimationFrame(tick);
+  })(performance.now());
+}
+
+// Legacy shims so any old calls still work
+function toggleFilesSidebar() { activateSidePanel('files'); }
+function toggleParamsPanel()  { activateSidePanel('params'); }
+
+
+const ollamaUrl = () => document.getElementById('ollama-url').value.replace(/\/$/, '');
+const getModel  = () => document.getElementById('model').value;
+const getApiKey = () => document.getElementById('api-key').value.trim();
+const VISION_KW = ['llava','vision','moondream','bakllava','minicpm'];
+const isVis = (name) => {
+  const n = name.toLowerCase();
+  if (VISION_KW.some(k => n.includes(k))) return true;           // Ollama vision models
+  // gpt-4o and gpt-4-turbo families are vision-capable
+  if (n.includes('gpt-4o') || n.includes('gpt-4-turbo') || n.includes('gpt-4-vision')) return true;
+  return false;
+};
+
+// Vision detection — extended to cover Claude and Gemini families
+
+// ── Provider switching ─────────────────────────────────────────────────────
+function onProviderChange() {
+  S.provider = document.getElementById('provider-select').value;
+  const isOllama = S.provider === 'ollama';
+  document.getElementById('url-settings').style.display = isOllama ? '' : 'none';
+  document.getElementById('key-settings').style.display = isOllama ? 'none' : '';
+  document.getElementById('ping-btn').textContent = isOllama ? 'PING' : 'TEST';
+  document.getElementById('reload-models-btn').style.display = '';
+  const dot = document.getElementById('status-dot');
+  dot.className = ''; dot.title = 'Not tested';
+  // Trigger param re-discovery for the new provider (model may not be loaded yet)
+  discoverAndApply(getModel(), S.provider);
+  if (isOllama) {
+    pingBackend();
+  } else {
+    setDropdownMsg('Enter API key → click ⟳');
+    const key = getApiKey();
+    if (key) pingBackend();
+  }
+}
+
+// ── Connection / ping ──────────────────────────────────────────────────────
+async function pingBackend() {
+  if (S.provider !== 'ollama') return pingCloud();
+  return pingOllama();
+}
+
+async function pingOllama() {
+  const dot = document.getElementById('status-dot');
+  dot.className = 'busy';
+  try {
+    const r = await fetch(ollamaUrl() + '/api/tags', { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      dot.className = 'ok'; dot.title = 'Ollama connected';
+      populateModels((await r.json()).models || []);
+    } else {
+      dot.className = 'error'; dot.title = 'Ollama error';
+      setDropdownMsg('Ollama error');
+    }
+  } catch (_) {
+    dot.className = 'error'; dot.title = 'Cannot reach Ollama';
+    setDropdownMsg('Ollama unreachable');
+  }
+}
+
+async function pingCloud() {
+  const dot = document.getElementById('status-dot');
+  const key = getApiKey();
+  dot.className = 'busy';
+  if (!key) {
+    dot.className = 'error'; dot.title = 'No API key entered';
+    setDropdownMsg('Enter API key → click ⟳');
+    return;
+  }
+  try {
+    const r = await fetch('https://api.openai.com/v1/models', {
+      headers: { Authorization: 'Bearer ' + key },
+      signal: AbortSignal.timeout(6000),
+    });
+    dot.className = r.ok ? 'ok' : 'error';
+    dot.title = r.ok ? 'OpenAI connected' : 'OpenAI key error';
+    if (r.ok) {
+      const data = await r.json();
+      const CHAT_PREFIXES = ['gpt-', 'o1', 'o3', 'o4'];
+      const VISION_KEYS   = ['gpt-4o', 'gpt-4-turbo', 'gpt-4-vision', 'vision'];
+      const chatModels = (data.data || [])
+        .filter(m =>
+          CHAT_PREFIXES.some(p => m.id.startsWith(p)) &&
+          !m.id.includes('instruct') && !m.id.includes('audio') &&
+          !m.id.includes('tts') && !m.id.includes('whisper') &&
+          !m.id.includes('dall-e') && !m.id.includes('embed') &&
+          !m.id.includes('realtime') && !m.id.includes('search')
+        )
+        .sort((a, b) => (b.created || 0) - (a.created || 0));
+      if (chatModels.length) {
+        populateModels(chatModels.map(m => ({
+          name: m.id,
+          vision: VISION_KEYS.some(v => m.id.includes(v)),
+        })));
+      } else {
+        setDropdownMsg('No chat models found');
+      }
+    } else {
+      setDropdownMsg('OpenAI key error');
+    }
+  } catch (_) {
+    dot.className = 'error'; dot.title = 'Connection failed';
+    setDropdownMsg('Connection failed');
+  }
+}
+
+function populateModels(models) {
+  const sel  = document.getElementById('model');
+  const prev = sel.value;
+  sel.innerHTML = ''; sel.disabled = false;
+  if (!models.length) { setDropdownMsg('No models installed'); return; }
+  models.sort((a, b) => {
+    const av = isVis(a.name), bv = isVis(b.name);
+    if (av !== bv) return av ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  let lastVis = null;
+  for (const m of models) {
+    const v = isVis(m.name);
+    if (lastVis !== null && v !== lastVis) {
+      const sep = document.createElement('option');
+      sep.disabled = true; sep.textContent = '─────────────────';
+      sel.appendChild(sep);
+    }
+    lastVis = v;
+    const opt = document.createElement('option');
+    opt.value = m.name;
+    opt.textContent = m.name + (v ? ' [vision]' : '');
+    sel.appendChild(opt);
+  }
+  const names = models.map(m => m.name);
+  if (prev && names.includes(prev)) sel.value = prev;
+  else { const fv = models.find(m => isVis(m.name)); sel.value = fv ? fv.name : models[0].name; }
+  // Discover params for whichever model ended up selected
+  discoverAndApply(sel.value, S.provider);
+}
+
+function setDropdownMsg(msg) {
+  const sel = document.getElementById('model');
+  if (!sel.options.length || !sel.options[0].value) {
+    sel.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = ''; opt.disabled = true; opt.selected = true; opt.textContent = msg;
+    sel.appendChild(opt); sel.disabled = true;
+  }
+}
+
+// ── Unified LLM stream ─────────────────────────────────────────────────────
+async function llmStream(prompt, image, onChunk, refPdf) {
+  S_abortCtrl = new AbortController();
+  const p = S.provider;
+  if (p === 'openai') return openaiStream(prompt, image, onChunk, refPdf);
+  return ollamaStream(prompt, image, onChunk);
+}
+
+async function ollamaStream(prompt, image, onChunk) {
+  const model = getModel();
+  if (!model) throw new Error('No model selected — check Ollama is running and has models installed.');
+  const msg = { role: 'user', content: prompt };
+  if (image) msg.images = [image];
+  const opts = {
+    temperature:    P.temperature,
+    top_p:          P.top_p,
+    top_k:          P.top_k   > 0 ? P.top_k   : undefined,
+    num_predict:    P.max_tokens,
+    repeat_last_n:  P.repeat_last_n,
+    repeat_penalty: P.repeat_penalty,
+  };
+  if (P.seed !== null) opts.seed = P.seed;
+  const res = await fetch(ollamaUrl() + '/api/chat', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, stream: true, options: opts, messages: [msg] }),
+    signal: S_abortCtrl?.signal,
+  });
+  if (!res.ok) throw new Error('Ollama ' + res.status + ': ' + await res.text());
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let full = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    for (const line of dec.decode(value, { stream: true }).split('\n')) {
+      if (!line.trim()) continue;
+      try { const d = JSON.parse(line), c = d.message?.content || ''; if (c) { full += c; onChunk(c, full); } } catch (_) {}
+    }
+  }
+  return full;
+}
+
+async function openaiStream(prompt, image, onChunk, refPdf) {
+  const model = getModel(), key = getApiKey();
+  if (!key) throw new Error('No OpenAI API key entered.');
+  S._pdfIgnored = false;
+
+  // Build a content array, optionally including the PDF reference block
+  const buildContent = (includePdf) => {
+    const c = [];
+    if (includePdf && refPdf) c.push({ type: 'file', file: { filename: 'GRL-reference.pdf', file_data: 'data:application/pdf;base64,' + refPdf } });
+    if (image) c.push({ type: 'image_url', image_url: { url: 'data:' + (S.imageMimeType || 'image/jpeg') + ';base64,' + image } });
+    c.push({ type: 'text', text: prompt });
+    return c;
+  };
+  const buildBody = (content) => {
+    const isO = /^o\d|^o1|^o3|^o4|^gpt-5/i.test(model);
+    const b = { model, stream: true, messages: [{ role: 'user', content }] };
+    if (isO) {
+      b.max_completion_tokens = P.max_tokens;
+      if (P.reasoning_effort) b.reasoning_effort = P.reasoning_effort;
+    } else {
+      b.max_tokens = P.max_tokens;
+      if (P.temperature       !== undefined) b.temperature        = P.temperature;
+      if (P.top_p             !== undefined) b.top_p              = P.top_p;
+      if (P.frequency_penalty !== undefined) b.frequency_penalty  = P.frequency_penalty;
+      if (P.presence_penalty  !== undefined) b.presence_penalty   = P.presence_penalty;
+    }
+    if (P.seed !== null && P.seed !== undefined) b.seed = P.seed;
+    return b;
+  };
+  const doFetch = (content) => fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    body: JSON.stringify(buildBody(content)),
+    signal: S_abortCtrl?.signal,
+  });
+
+  let res = await doFetch(buildContent(true));
+
+  // If the model doesn't support file content types, silently retry without the PDF
+  if (!res.ok && res.status === 400 && refPdf) {
+    const errText = await res.text();
+    let isFileErr = false;
+    try {
+      const msg = JSON.parse(errText)?.error?.message || '';
+      isFileErr = /does not support file|file.*content.type|invalid.*file/i.test(msg);
+    } catch (_) { isFileErr = /['"']file['"']/.test(errText); }
+    if (isFileErr) {
+      S._pdfIgnored = true;
+      res = await doFetch(buildContent(false));
+    } else {
+      throw new Error('OpenAI 400: ' + errText);
+    }
+  }
+
+  if (!res.ok) throw new Error('OpenAI ' + res.status + ': ' + await res.text());
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let full = '', buf = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop(); // retain any incomplete trailing line for the next read
+    for (const line of lines) {
+      const clean = line.replace(/^data: /, '').trim();
+      if (!clean || clean === '[DONE]') continue;
+      try { const d = JSON.parse(clean), c = d.choices?.[0]?.delta?.content || ''; if (c) { full += c; onChunk(c, full); } } catch (_) {}
+    }
+  }
+  return full;
+}
+
+// ── GRL parsers ────────────────────────────────────────────────────────────
+function normType(raw) {
+  const t = String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
+  if (t.includes('softgoal')||t.includes('qualitygoal')||t.includes('nfr')) return 'SoftGoal';
+  if (t.includes('goal'))     return 'Goal';
+  if (t.includes('task'))     return 'Task';
+  if (t.includes('resource')) return 'Resource';
+  if (t.includes('belief'))   return 'Belief';
+  return 'Goal';
+}
+function normLinkType(raw) {
+  const t = String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
+  if (t.includes('decomp'))   return 'Decomposition';
+  if (t.includes('contrib'))  return 'Contribution';
+  if (t.includes('depend'))   return 'Dependency';
+  return 'Dependency';
+}
+function parseGRL(text, fn) {
+  const f = (fn||'').toLowerCase(), tr = text.trim();
+  if (f.endsWith('.xgrl')||f.endsWith('.tgrl')) return parseXGRL(tr);
+  if (f.endsWith('.jucm')||f.endsWith('.xmi')||f.endsWith('.xml')||tr.startsWith('<')) return parseXML(tr);
+  if (tr.startsWith('{')||tr.startsWith('[')) return parseJSON(tr);
+  return parseTxt(tr);
+}
+
+// ── XGRL / TGRL parser (with link extraction) ──────────────────────────────
+function parseXGRL(text) {
+  const actors = [], elements = [], links = [];
+  // Maps xgrlInternalId -> our element obj (keyed as 'ActorXgrlId.ElemXgrlId' AND bare 'ElemXgrlId')
+  const elemByXgrl = {};
+  const actorByXgrl = {};
+  const pendingLinks = []; // resolved after all elements are registered
+
+  const clean = text
+    .replace(/\/\/[^\n]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // Tokenise: add '.', '-' and digits so we can capture contribution values and dotted refs
+  const TOKEN = /"[^"]*"|[{}();=,.\-]|[A-Za-z_][A-Za-z0-9_]*|\d+/g;
+  const toks = [];
+  let m;
+  while ((m = TOKEN.exec(clean)) !== null) toks.push(m[0]);
+
+  let i = 0;
+  const peek  = (off=0) => toks[i+off];
+  const next  = () => toks[i++];
+  const eat   = (v) => { if (toks[i]===v) i++; };
+  const str   = (t) => t && t.startsWith('"') ? t.slice(1,-1) : t;
+
+  // Read a { ... } block; returns { attrs, children:[{kw,id,body}], rawStatements:[[tok,...]] }
+  function readBlock() {
+    eat('{');
+    const attrs = {}, children = [], rawStatements = [];
+    while (i < toks.length && peek() !== '}') {
+      const t = next();
+      if (!t || t === '}') break;
+
+      if (peek() === '=') {               // key = value ;
+        eat('='); attrs[t] = str(next()); eat(';'); continue;
+      }
+      if (peek() && /^[A-Za-z_][A-Za-z0-9_]*$/.test(peek()) && toks[i+1] === '{') {
+        const kw = t, id = next();        // keyword id { ... }
+        children.push({kw, id, body: readBlock()}); continue;
+      }
+      // Capture raw statement tokens (decomposedBy / contributesTo / dependsOn / etc.)
+      const stmt = [t];
+      let d = 0;
+      while (i < toks.length) {
+        const tok = peek();
+        if      (tok === '{')             { d++; stmt.push(next()); }
+        else if (tok === '}' && d > 0)    { d--; stmt.push(next()); }
+        else if (tok === '}' && d === 0)  { break; }
+        else if (tok === ';' && d === 0)  { next(); break; } // consume ; silently
+        else                              { stmt.push(next()); }
+      }
+      if (stmt.length > 1) rawStatements.push(stmt);
+    }
+    eat('}');
+    return {attrs, children, rawStatements};
+  }
+
+  // Helper: parse a link statement array into a pendingLink record
+  // stmt = token array (semicolons already stripped)
+  function parseLinkStmt(stmt, actorXgrlId) {
+    // Possible patterns (after stripping {} and ; from stmt):
+    //   [fromId, 'decomposedBy', toId, ...]               (comma-separated targets)
+    //   [fromId, 'contributesTo', toId, '{', val, '}']    (value in braces)
+    //   [fromId, 'dependsOn', toId]
+    const linkKw = stmt[1];
+    if (!linkKw) return;
+    const fromKey = actorXgrlId ? actorXgrlId + '.' + stmt[0] : stmt[0];
+
+    if (linkKw === 'decomposedBy') {
+      // All remaining tokens except commas and braces are target IDs
+      const targets = stmt.slice(2).filter(t => t !== ',' && t !== '{' && t !== '}');
+      for (const toId of targets) {
+        pendingLinks.push({type:'Decomposition', fromKey, toKey: actorXgrlId ? actorXgrlId+'.'+toId : toId});
+      }
+    } else if (linkKw === 'contributesTo') {
+      const toId = stmt[2];
+      const toKey = actorXgrlId ? actorXgrlId + '.' + toId : toId;
+      // Extract contribution value: look for '-' digit or plain digit in rest
+      let value = null;
+      for (let j = 3; j < stmt.length; j++) {
+        if (stmt[j] === '-' && /^\d+$/.test(stmt[j+1])) { value = -parseInt(stmt[j+1]); break; }
+        if (/^\d+$/.test(stmt[j]))                       { value =  parseInt(stmt[j]);   break; }
+      }
+      pendingLinks.push({type:'Contribution', fromKey, toKey, value});
+    } else if (linkKw === 'dependsOn') {
+      // Could be 'toId' (intra-actor) or 'actorId . elemId' (cross-actor, dots already tokenised)
+      // Reassemble dotted references: [id, '.', id] → 'id.id'
+      const restTokens = stmt.slice(2).filter(t => t !== '{' && t !== '}');
+      const toKey = restTokens.join('').replace(/\./g, '.'); // dots already in tokens
+      pendingLinks.push({type:'Dependency', fromKey, toKey: actorXgrlId && !toKey.includes('.') ? actorXgrlId+'.'+toKey : toKey});
+    }
+  }
+
+  // Top-level: grl ModelName { ... }
+  // Collect top-level cross-actor raw statements too
+  const topLevelStmts = [];
+
+  while (i < toks.length) {
+    const t = next();
+    if (t !== 'grl') continue;
+    next(); // model name
+    eat('{');
+    while (i < toks.length && peek() !== '}') {
+      const t2 = next();
+      if (!t2 || t2 === '}') break;
+
+      if (t2 === 'actor') {
+        const actorXgrlId = next();
+        const body = readBlock();
+        const aid = 'xg_a_' + actors.length;
+        const actor = {id: aid, name: body.attrs.name || actorXgrlId};
+        actors.push(actor);
+        actorByXgrl[actorXgrlId] = actor;
+
+        // Register elements
+        body.children.forEach(child => {
+          const {kw, id: xgrlId, body: cb} = child;
+          const type = normType(kw);
+          if (['Goal','SoftGoal','Task','Resource','Belief'].includes(type)) {
+            const ename = cb.attrs.name || xgrlId;
+            const ourId = 'xg_e_' + elements.length;
+            const elem = {id: ourId, name: ename, type, actorId: aid,
+                          importance: cb.attrs.importance != null ? parseInt(cb.attrs.importance) : null,
+                          decompositionType: cb.attrs.decompositionType ? cb.attrs.decompositionType.toLowerCase() : null,
+                          _decompType: (cb.attrs.decompositionType || 'and').toLowerCase()};
+            elements.push(elem);
+            elemByXgrl[actorXgrlId + '.' + xgrlId] = elem;
+            elemByXgrl[xgrlId] = elem; // bare fallback
+          }
+        });
+
+        // Parse link statements inside this actor
+        body.rawStatements.forEach(stmt => parseLinkStmt(stmt, actorXgrlId));
+        continue;
+      }
+
+      // Top-level statement — capture as raw for cross-actor dependency detection
+      const stmt = [t2];
+      let d = 0;
+      while (i < toks.length) {
+        const tok = peek();
+        if      (tok === '{')             { d++; stmt.push(next()); }
+        else if (tok === '}' && d > 0)    { d--; stmt.push(next()); }
+        else if (tok === '}' && d === 0)  { break; }
+        else if (tok === ';' && d === 0)  { next(); break; }
+        else                              { stmt.push(next()); }
+      }
+      if (stmt.length > 2) topLevelStmts.push(stmt);
+    }
+    eat('}');
+  }
+
+  // Parse top-level cross-actor statements (e.g. AutonomousVehicle . NavigateSafely dependsOn ...)
+  // Dots are separate tokens; rebuild dotted references
+  topLevelStmts.forEach(stmt => {
+    // Condense [id, '.', id, kw, id, '.', id] → treat '.' as part of keys
+    const condensed = [];
+    for (let j = 0; j < stmt.length; j++) {
+      if (stmt[j+1] === '.') { condensed.push(stmt[j] + '.' + (stmt[j+2]||'')); j+=2; }
+      else condensed.push(stmt[j]);
+    }
+    parseLinkStmt(condensed, null);
+  });
+
+  // Resolve pending links
+  function resolveKey(key) {
+    if (elemByXgrl[key]) return elemByXgrl[key];
+    // Try bare (without actor prefix)
+    const bare = key.includes('.') ? key.split('.').pop() : key;
+    return elemByXgrl[bare] || null;
+  }
+
+  pendingLinks.forEach(pl => {
+    const src = resolveKey(pl.fromKey);
+    const tgt = resolveKey(pl.toKey);
+    if (!src || !tgt) return;
+    const crossActor = src.actorId !== tgt.actorId;
+    let subtype = null;
+    if (pl.type === 'Decomposition') subtype = src._decompType || 'and';
+    links.push({
+      id: 'xg_l_' + links.length,
+      type: pl.type, subtype,
+      value: pl.value !== undefined ? pl.value : null,
+      sourceId: src.id, targetId: tgt.id,
+      sourceActorId: src.actorId, targetActorId: tgt.actorId,
+      crossActor,
+    });
+  });
+
+  return {actors, elements, links};
+}
+function parseXML(text) {
+  const doc = new DOMParser().parseFromString(text,'text/xml'), actors=[], elements=[], links=[];
+  doc.querySelectorAll('ActorDef,actorDef,Actor,actor').forEach((n,i)=>{actors.push({id:n.getAttribute('id')||('xa'+i),name:n.getAttribute('name')||n.getAttribute('label')||('Actor '+(i+1))})});
+  doc.querySelectorAll('IntentionalElementDef,intentionalElementDef,IntentionalElement,intentionalelement,IEDef').forEach((n,i)=>{
+    let aid=n.getAttribute('actorRef')||n.getAttribute('actor')||null;
+    if(!aid){let p=n.parentElement;while(p){const t=p.tagName.toLowerCase();if(t==='actordef'||t==='actor'){aid=p.getAttribute('id');break;}p=p.parentElement;}}
+    elements.push({id:'xe'+i,name:n.getAttribute('name')||n.getAttribute('label')||('Element '+(i+1)),type:normType(n.getAttribute('type')||n.tagName),actorId:aid});
+  });
+  // TODO: parse XML link elements (ElementLink, Contribution, etc.)
+  return {actors,elements,links};
+}
+function parseJSON(text) {
+  try {
+    const d=JSON.parse(text);
+    const rawLinks=(d.links||d.dependencies||[]).map((l,i)=>({
+      id:l.id||('jl'+i),
+      type:normLinkType(l.type||l.linkType||'Dependency'),
+      subtype:l.subtype||null,
+      value:typeof l.value==='number'?l.value:null,
+      sourceId:l.sourceId||l.from||null,
+      targetId:l.targetId||l.to||null,
+      sourceActorId:l.sourceActorId||null,
+      targetActorId:l.targetActorId||null,
+      crossActor:!!(l.crossActor),
+    }));
+    return {
+      actors:(d.actors||[]).map((a,i)=>({id:a.id||('ja'+i),name:a.name||a.label||('Actor '+(i+1))})),
+      elements:(d.elements||d.intentionalElements||[]).map((e,i)=>({id:e.id||('je'+i),name:e.name||e.label||('Element '+(i+1)),type:normType(e.type),actorId:e.actorId||e.actor||null,importance:typeof e.importance==='number'?e.importance:(e.importance!=null?parseInt(e.importance):null),decompositionType:e.decompositionType?e.decompositionType.toLowerCase():null,_decompType:(e.decompositionType||'and').toLowerCase()})),
+      links:rawLinks,
+    };
+  } catch(_){return {actors:[],elements:[],links:[]};}
+}
+function parseTxt(text) {
+  const actors=[],elements=[],links=[];let cur=null;
+  for (const raw of text.split('\n')) {
+    const line=raw.trim();
+    if(!line||line.startsWith('#')||line.startsWith('//')||line==='}') continue;
+    const am=line.match(/^\[actor\]\s+(.+)$/i)||line.match(/^actor[:\s]+["']?(.+?)["']?\s*[{]?\s*$/i);
+    if(am){cur={id:'ta'+actors.length,name:am[1].trim().replace(/['"{}]/g,'').trim()};actors.push(cur);continue;}
+    const em=line.match(/^\[(goal|softgoal|task|resource|belief)\]\s+(.+)$/i)||line.match(/^(goal|softgoal|task|resource|belief)[:\s]+["']?(.+?)["']?\s*$/i);
+    if(em) elements.push({id:'te'+elements.length,name:em[2].trim().replace(/['"]/g,''),type:normType(em[1]),actorId:cur?cur.id:null});
+  }
+  return {actors,elements,links};
+}
+
+// ── File handling ──────────────────────────────────────────────────────────
+const uploadZone=document.getElementById('upload-zone'), fileInput=document.getElementById('file-input');
+uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('dragover')});
+uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop',e=>{e.preventDefault();uploadZone.classList.remove('dragover');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
+fileInput.addEventListener('change',()=>{if(fileInput.files[0])handleFile(fileInput.files[0]);fileInput.value='';});
+
+// ── GRL Reference PDF upload ──────────────────────────────────────────────
+document.getElementById('grl-ref-input').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    S.grlRefPdf = ev.target.result.split(',')[1];
+    const zone  = document.getElementById('grl-ref-zone');
+    const label = document.getElementById('grl-ref-label');
+    zone.classList.add('loaded');
+    label.textContent = file.name;
+    label.title = file.name;
+    const st = document.getElementById('output-status');
+    st.textContent = '📄 GRL ref loaded: ' + file.name;
+    st.style.color = 'var(--accent)';
+    setTimeout(() => { st.textContent = 'Ready'; st.style.color = 'var(--muted2)'; }, 3000);
+  };
+  reader.readAsDataURL(file);
+  this.value = '';
+});
+
+function isImg(n){return /\.(png|jpe?g|gif|bmp|webp|tiff?)$/i.test(n)}
+// Returns the OpenAI-compatible MIME type for supported image formats, or null for unsupported ones.
+// OpenAI accepts: png, jpeg, gif, webp — bmp/tiff are NOT supported.
+function getImgMimeType(filename) {
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  const map = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };
+  return map[ext] || null;
+}
+function toB64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file)})}
+
+async function handleFile(file) {
+  const isImage = isImg(file.name);
+
+  if (isImage) {
+    const mime = getImgMimeType(file.name);
+    if (!mime) {
+      // Unsupported image format — inform the user and bail out without changing any state
+      const ext = (file.name.split('.').pop() || 'unknown').toUpperCase();
+      const entry = appendMsg('', false);
+      entry.querySelector('.output-label').textContent = '⚠ Unsupported image format';
+      entry.querySelector('.output-text').textContent =
+        '.' + ext + ' files cannot be sent to the vision API.\n' +
+        'Supported formats: PNG · JPEG · GIF · WEBP';
+      return;
+    }
+    // Snapshot existing image analysis into the sidebar before loading a new image
+    saveCurrentSnapshot();
+    S.imageMimeType = mime;
+  } else {
+    S.imageMimeType = null;
+  }
+
+  S.fileName = file.name;
+  document.getElementById('upload-label').textContent = file.name;
+  uploadZone.classList.add('loaded');
+  if (isImage) {
+    S.imageBase64 = await toB64(file);
+    ACTIVE_SNAP_ID = null;
+    await analyzeImage(S.imageBase64);
+    // Snapshot the freshly-completed analysis
+    saveCurrentSnapshot();
+  } else {
+    S.imageBase64 = null;
+    const data = parseGRL(await file.text(), file.name);
+    applyData(data);
+    appendMsg('Parsed "'+file.name+'" → '+data.actors.length+' actor(s), '+data.elements.length+' element(s)');
+  }
+}
+
+// ── JSON repair helpers ────────────────────────────────────────────────────
+// Close any unclosed strings / arrays / objects left by token truncation.
+function closeJson(s) {
+  const stack = [];
+  let inStr = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc)          { esc = false; continue; }
+    if (c === '\\' && inStr) { esc = true; continue; }
+    if (c === '"')    { inStr = !inStr; continue; }
+    if (inStr)        continue;
+    if (c === '{')    stack.push('}');
+    else if (c === '[') stack.push(']');
+    else if (c === '}' || c === ']') stack.pop();
+  }
+  if (inStr) s += '"';                   // close a dangling open string
+  while (stack.length) s += stack.pop(); // close open arrays / objects
+  return s;
+}
+
+// Light repair: fix the most common LLM truncation artifacts without
+// doing a full re-parse that would lose field ordering.
+function repairJson(raw) {
+  let s = raw.trim();
+  // Strip markdown fences
+  s = s.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+  // Find the start of the outermost object
+  const start = s.indexOf('{');
+  if (start === -1) return s;
+  s = s.slice(start);
+
+  // 1. Missing comma between a closing }] and the next "key":
+  //    e.g.  }elements":  →  },"elements":
+  //          ]"links":    →  ],"links":
+  s = s.replace(/([}\]])\s*"(?=[a-zA-Z_])/g, (_, p) => p + ',"');
+
+  // 2. Trailing comma before } or ] (makes JSON.parse reject)
+  s = s.replace(/,(\s*[}\]])/g, '$1');
+
+  // 3. Close unclosed structures left by mid-token truncation
+  s = closeJson(s);
+
+  return s;
+}
+
+// Parse one {…} object string, trying raw then repaired.
+function tryParseObj(s) {
+  try { return JSON.parse(s); } catch(_) {}
+  try { return JSON.parse(repairJson(s)); } catch(_) {}
+  return null;
+}
+
+// Extract every balanced {…} object from a text slice [start, end).
+// String-aware so `{` / `}` inside quoted values are ignored.
+function extractObjects(text, start, end) {
+  const items = [];
+  let i = start;
+  while (i < end) {
+    if (text[i] !== '{') { i++; continue; }
+    const stack = [];
+    let inStr = false, esc = false, objEnd = -1;
+    for (let j = i; j <= end; j++) {
+      const c = text[j];
+      if (esc)                  { esc = false; continue; }
+      if (c === '\\' && inStr)  { esc = true;  continue; }
+      if (c === '"')            { inStr = !inStr; continue; }
+      if (inStr)                continue;
+      if (c === '[' || c === '{') stack.push(c === '[' ? ']' : '}');
+      else if (c === ']' || c === '}') {
+        stack.pop();
+        if (stack.length === 0) { objEnd = j; break; }
+      }
+    }
+    if (objEnd === -1) { i++; continue; }
+    const obj = tryParseObj(text.slice(i, objEnd + 1));
+    if (obj) items.push(obj);
+    i = objEnd + 1;
+  }
+  return items;
+}
+
+// Extract a single top-level array value (e.g. "actors":[...]) from possibly-corrupt JSON.
+// 1. Finds the array boundary with a string-aware bracket tracker.
+// 2. Tries to parse the whole slice (then repaired slice).
+// 3. If that fails, falls back to per-item extraction so that valid objects
+//    inside a partially-corrupt array are still recovered.
+function extractTopLevelArray(text, key) {
+  const re = new RegExp('"' + key + '"\\s*:\\s*\\[');
+  const m = re.exec(text);
+  if (!m) return null;
+
+  // arrStart = index of the opening '['
+  const arrStart = m.index + m[0].length - 1;
+
+  // Walk forward to find the matching ']'
+  const stack = [];
+  let inStr = false, esc = false, arrEnd = -1;
+  for (let i = arrStart; i < text.length; i++) {
+    const c = text[i];
+    if (esc)                  { esc = false; continue; }
+    if (c === '\\' && inStr)  { esc = true;  continue; }
+    if (c === '"')            { inStr = !inStr; continue; }
+    if (inStr)                continue;
+    if (c === '[' || c === '{') stack.push(c === '[' ? ']' : '}');
+    else if (c === ']' || c === '}') {
+      stack.pop();
+      if (stack.length === 0) { arrEnd = i; break; }
+    }
+  }
+  // If unclosed, use as much as we have
+  if (arrEnd === -1) arrEnd = text.length - 1;
+
+  const candidate = text.slice(arrStart, arrEnd + 1);
+
+  // Attempt 1: parse the whole array slice
+  try { return JSON.parse(candidate); } catch(_) {}
+  try { return JSON.parse(repairJson(candidate)); } catch(_) {}
+
+  // Attempt 2: per-item — recover every parseable object inside the slice
+  const items = extractObjects(text, arrStart + 1, arrEnd);
+  return items.length ? items : null;
+}
+
+// Robust JSON extractor: handles models that prematurely close arrays,
+// emit orphaned fragments, or return corrupted / truncated JSON.
+function extractGRLJson(text) {
+  // Pass 0: try raw first (clean output, fastest path)
+  const stripped = text.slice(text.indexOf('{')).trim();
+  try {
+    const d = JSON.parse(stripped);
+    if (d.actors || d.elements || d.intentionalElements || d.links) return d;
+  } catch(_) {}
+
+  // Pass 1: apply repair and retry
+  try {
+    const repaired = repairJson(text);
+    const d = JSON.parse(repaired);
+    if (d.actors || d.elements || d.intentionalElements || d.links) return d;
+  } catch(_) {}
+
+  // Pass 2: collect every balanced {...} substring, try repaired version of each (largest first)
+  const matches = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== '{') continue;
+    let depth = 0;
+    for (let j = i; j < text.length; j++) {
+      if (text[j] === '{') depth++;
+      else if (text[j] === '}') { depth--; if (depth === 0) { matches.push(text.slice(i, j+1)); break; } }
+    }
+  }
+  matches.sort((a,b) => b.length - a.length);
+  for (const m of matches) {
+    for (const candidate of [m, repairJson(m)]) {
+      try {
+        const d = JSON.parse(candidate);
+        if (d.actors || d.elements || d.intentionalElements || d.links) return d;
+      } catch(_) {}
+    }
+  }
+
+  // Pass 2.5: extract each top-level array independently.
+  // Useful when the overall JSON is corrupt but individual sub-arrays are valid
+  // (common with OpenAI: actors array is clean but elements/links sections are garbled).
+  {
+    const actors   = extractTopLevelArray(text, 'actors')   || [];
+    const elements = extractTopLevelArray(text, 'elements')
+                  || extractTopLevelArray(text, 'intentionalElements') || [];
+    const links    = extractTopLevelArray(text, 'links')
+                  || extractTopLevelArray(text, 'dependencies') || [];
+    if (actors.length || elements.length) return { actors, elements, links };
+  }
+
+  // Pass 3: model emitted orphaned element fragments — reassemble.
+  // Distinguish actors (have id+name but NO type/sourceId) from elements (have type)
+  // and link fragments (have sourceId/targetId).
+  const allObjs = matches.map(m => { try { return JSON.parse(repairJson(m)); } catch(_) { return null; } }).filter(Boolean);
+  const structuredActors = allObjs.find(o => Array.isArray(o.actors))?.actors || [];
+  // Actor objects: {id, name} with no type/sourceId/targetId field
+  const actorFrags = allObjs.filter(o => o.id && o.name && !o.type && !o.sourceId && !o.targetId && !o.actors);
+  // Element objects: {id, name, type}
+  const elemFrags  = allObjs.filter(o => o.id && o.name && o.type  && !o.actors);
+  // Link objects: have sourceId or targetId
+  const linkFrags  = allObjs.filter(o => (o.sourceId || o.from) && (o.targetId || o.to));
+  const resolvedActors = structuredActors.length ? structuredActors : actorFrags;
+  // Fallback: if no typed elements found, grab any named fragment not already an actor
+  const resolvedElems  = elemFrags.length
+    ? elemFrags
+    : allObjs.filter(o => o.id && o.name && !o.actors && !actorFrags.includes(o));
+  if (resolvedActors.length || resolvedElems.length) {
+    return { actors: resolvedActors, elements: resolvedElems, links: linkFrags };
+  }
+
+  // Pass 4: trim orphaned tail and retry with repair
+  const first = text.indexOf('{');
+  if (first !== -1) {
+    const trimmed = text.slice(first).replace(/\}\s*\]\s*\}\s*\{[\s\S]*$/, ']}');
+    try { const d = JSON.parse(repairJson(trimmed)); if (d.actors || d.elements) return d; } catch(_) {}
+  }
+
+  // Pass 5: model returned markdown — parse structurally
+  return parseMarkdownGRL(text);
+}
+
+function parseMarkdownGRL(text) {
+  const actors = [], elements = [];
+  // Remove **bold headers** then split on every `*` that precedes a letter
+  // (i.e. bullet points). Works whether items are on separate lines or inline.
+  const clean = text.replace(/\*\*[^*]*\*\*/g, ' ');
+  const items = clean.split(/\*(?=\s+[a-zA-Z])/).map(s => s.trim()).filter(Boolean);
+  // Matches:  id: name (Type, actorId)   — all fields after id are optional
+  const idRe = /^([a-z]\d+)\s*:\s*(.+?)(?:\s*\(([^,)]+)(?:,\s*([^)]+))?\))?\s*$/i;
+  for (const item of items) {
+    const m = idRe.exec(item);
+    if (!m) continue;
+    const [, id, name, type, actorId] = m;
+    if (/^a/i.test(id)) {
+      actors.push({ id, name: name.trim() });
+    } else {
+      elements.push({ id, name: name.trim(), type: type ? type.trim() : undefined, actorId: actorId ? actorId.trim() : null });
+    }
+  }
+  if (actors.length || elements.length) return { actors, elements, links: [] };
+  return null;
+}
+
+async function analyzeImage(b64) {
+  // Fewer fields per object = fewer tokens = less mid-token corruption.
+  // sourceActorId/targetActorId/crossActor are derived in code; null fields are omitted.
+  const prompt = [
+    'You are a GRL diagram parser. Extract every actor, intentional element, and link from this GRL diagram image.',
+    S.grlRefPdf
+      ? 'Refer to the attached GRL reference document for notation, element types, and link types.'
+      : GRL_NOTATION_RULES,
+    '',
+    'Output a single raw JSON object — no markdown, no prose, nothing else.',
+    '',
+    'Exact schema:',
+    '{"actors":[{"id":"a1","name":"Actor Name"}],',
+    '"elements":[{"id":"e1","name":"Element Name","type":"Goal","actorId":"a1","importance":100,"decompositionType":"and"}],',
+    '"links":[{"id":"l1","type":"Decomposition","subtype":"and","sourceId":"e2","targetId":"e1"}]}',
+    '',
+    'Field rules:',
+    '- element type: exactly one of Goal SoftGoal Task Resource Belief',
+    '- importance: integer from diagram (e.g. "(100)") — omit if not shown',
+    '- decompositionType: "and" or "or" — omit if not shown',
+    '- link type: exactly one of Decomposition Contribution Dependency',
+    '- Decomposition: set subtype "and"/"or", omit value',
+    '- Contribution: set value as signed integer, omit subtype',
+    '- Dependency: omit subtype and value',
+    '- Omit any field whose value is null',
+    '',
+    'CRITICAL — output must be valid JSON starting with { and ending with }. No trailing commas.',
+  ].join('\n');
+  S.busy = true;
+  try {
+    setBusy(true,'Analyzing image...');
+    const entry=appendMsg('Extracting GRL structure from image...',true), textEl=entry.querySelector('.output-text');
+    let full='';
+    await llmStream(prompt,b64,(_,f)=>{full=f;textEl.textContent=f;scrollOut()},S.grlRefPdf);
+    textEl.classList.remove('streaming');
+    const parsed = extractGRLJson(full);
+    if(parsed){
+      const NESTED_KEYS=['goals','softgoals','tasks','resources','beliefs','elements','intentionalElements'];
+      let flatElems=(parsed.elements||parsed.intentionalElements||[]).slice();
+      if(!flatElems.length && Array.isArray(parsed.actors)){
+        parsed.actors.forEach(a=>{
+          NESTED_KEYS.forEach(k=>{
+            if(Array.isArray(a[k])) a[k].forEach(e=>flatElems.push(Object.assign({},e,{actorId:e.actorId||a.id})));
+          });
+        });
+        const seen=new Set();
+        flatElems=flatElems.filter(e=>{const key=e.id+'|'+e.name+'|'+(e.type||'');if(seen.has(key))return false;seen.add(key);return true;});
+      }
+      // Build id→element map to derive actor ownership without trusting model to repeat it
+      const elemById = Object.fromEntries(flatElems.map(e => [e.id, e]));
+      const rawLinks=(parsed.links||parsed.dependencies||[]).map((l,i)=>{
+        const sid = l.sourceId||l.from||null;
+        const tid = l.targetId||l.to||null;
+        const sAct = l.sourceActorId || elemById[sid]?.actorId || null;
+        const tAct = l.targetActorId || elemById[tid]?.actorId || null;
+        return {
+          id:l.id||('il'+i),
+          type:normLinkType(l.type||l.linkType||'Dependency'),
+          subtype:l.subtype||null,
+          value:typeof l.value==='number'?l.value:null,
+          sourceId:sid, targetId:tid,
+          sourceActorId:sAct, targetActorId:tAct,
+          crossActor: sAct && tAct ? sAct !== tAct : !!(l.crossActor),
+        };
+      });
+      applyData({
+        actors:(parsed.actors||[]).map((a,i)=>({id:a.id||('ia'+i),name:a.name})),
+        elements:flatElems.map((e,i)=>({
+          id:e.id||('ie'+i), name:e.name, type:normType(e.type), actorId:e.actorId||null,
+          importance:typeof e.importance==='number'?e.importance:(e.importance!=null?parseInt(e.importance):null),
+          decompositionType:e.decompositionType?e.decompositionType.toLowerCase():null,
+          _decompType:(e.decompositionType||'and').toLowerCase(),
+        })),
+        links:rawLinks,
+      });
+      appendMsg('Image analysis complete \u2192 '+S.actors.length+' actor(s), '+S.elements.length+' element(s), '+S.links.length+' link(s)');
+    } else appendMsg('No JSON found. Make sure a vision-capable model is selected (marked [vision]).');
+  } catch(err){appendMsg('Error: '+err.message);}
+  finally{setBusy(false); S.busy=false;}
+}
+
+// ── UI ─────────────────────────────────────────────────────────────────────
+function applyData(data) {
+  S.actors=data.actors; S.elements=data.elements; S.links=data.links||[];
+  S.grlJson=JSON.stringify({actors:S.actors,elements:S.elements,links:S.links},null,2);
+  S.selectedActorId=null; S.selectedElemIds.clear(); S.selectedLinkId=null;
+  S.satValues={}; S.satPropagated={}; S._actorSat={};
+  document.getElementById('clear-actor-btn').style.display='none';
+  document.getElementById('filter-pill').style.display='none';
+  renderActors(); renderElements(); renderLinks(); updateSummary();
+}
+function renderActors() {
+  const el=document.getElementById('actors-list');
+  document.getElementById('actor-count').textContent=''+S.actors.length;
+  if(!S.actors.length){el.innerHTML='<div class="empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#9678;</div>No actors found</div>';return;}
+  el.innerHTML=S.actors.map(a=>{
+    const cnt=S.elements.filter(e=>e.actorId===a.id).length;
+    const ini=a.name.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const actorSatVal = S._actorSat && S._actorSat[a.id] !== undefined ? S._actorSat[a.id] : null;
+    const satBadgeHtml = actorSatVal !== null
+      ? `<span class="sat-badge" style="--sat-c:${satNumColor(actorSatVal)};margin-left:4px" title="Actor avg satisfaction: ${actorSatVal}">${actorSatVal}</span>`
+      : '';
+    return '<div class="actor-item '+(S.selectedActorId===a.id?'active':'')+'" onclick="selectActor(\''+esc(a.id)+'\')">'
+      +'<div class="actor-avatar">'+esc(ini)+'</div>'
+      +'<span class="actor-name">'+esc(a.name)+'</span>'
+      +satBadgeHtml
+      +'<span class="actor-count">'+cnt+'</span></div>';
+  }).join('');
+}
+function renderElements() {
+  const el=document.getElementById('elements-list');
+  // Build O(1) lookup maps once per render
+  const actorMap = new Map(S.actors.map(a => [a.id, a]));
+  const filt=S.selectedActorId?S.elements.filter(e=>e.actorId===S.selectedActorId):S.elements;
+  document.getElementById('elem-count').textContent=S.selectedActorId?(filt.length+'/'+S.elements.length):(''+S.elements.length);
+  document.getElementById('desel-btn').style.display=S.selectedElemIds.size>0?'':'none';
+  if(!filt.length){el.innerHTML='<div class="empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#9672;</div>'+(S.selectedActorId?'No elements for this actor':'No elements found')+'</div>';return;}
+
+  el.innerHTML = filt.map(e => {
+    const an=actorMap.get(e.actorId);
+    const importanceHtml = e.importance != null
+      ? '<span class="elem-importance" title="Importance / weight">'+e.importance+'</span>' : '';
+    const actorTagHtml = !S.selectedActorId && an
+      ? '<span class="elem-actor-tag">'+esc(an.name)+'</span>' : '';
+    const decompHtml = e.decompositionType
+      ? '<span class="elem-decomp" title="Decomposition type">'+e.decompositionType+'</span>' : '';
+    const row2 = (decompHtml || actorTagHtml)
+      ? '<div class="elem-row2">'+decompHtml+actorTagHtml+'</div>' : '';
+    const selected = S.selectedElemIds.has(e.id);
+
+    // Sat badge (shown when there's a user-set or propagated value)
+    const propVal  = S.satPropagated[e.id];
+    const userVal  = S.satValues[e.id];
+    const showVal  = propVal !== undefined ? propVal : userVal;
+    const isUser   = userVal !== undefined && propVal === undefined;
+    const badgeColor = showVal !== undefined ? satNumColor(showVal) : '';
+    const badgeHtml = showVal !== undefined
+      ? `<span class="sat-badge${isUser?' val-user':''}" data-elem="${esc(e.id)}" title="${isUser?'User-set':'Propagated'}: ${showVal}" style="--sat-c:${badgeColor}">${showVal}</span>` : '';
+
+    // Sat input row (populated by renderSatInput after DOM insertion)
+    const satRowHtml = `<div class="sat-row" data-elem="${esc(e.id)}"></div>`;
+
+    return '<div class="elem-wrap'+(selected?' selected':'')+'" onclick="toggleElem(\''+esc(e.id)+'\')">'
+      +'<div class="elem-item">'
+      +'<span class="elem-type et-'+e.type+'">'+e.type+'</span>'
+      +'<span class="elem-name">'+esc(e.name)+'</span>'
+      +importanceHtml
+      +badgeHtml
+      +'</div>'
+      +row2
+      +satRowHtml
+      +'</div>';
+  }).join('');
+
+  // Populate sat input rows
+  el.querySelectorAll('.sat-row[data-elem]').forEach(row => {
+    renderSatInput(row, row.dataset.elem);
+    // Prevent clicks on the input row from toggling element selection
+    row.addEventListener('click', e => e.stopPropagation());
+  });
+
+  updateSatRunBtn();
+}
+function linkTypeClass(link) {
+  if (link.type==='Contribution') {
+    if (link.value>0)  return 'lt-Contribution-pos';
+    if (link.value<0)  return 'lt-Contribution-neg';
+    return 'lt-Contribution-neu';
+  }
+  return 'lt-'+link.type;
+}
+function linkTypeLabel(link) {
+  if (link.type==='Decomposition') return link.subtype ? link.type+' ('+link.subtype.toUpperCase()+')' : link.type;
+  if (link.type==='Contribution')  return link.value!=null ? 'Contribution' : 'Contribution';
+  return link.type;
+}
+function renderLinks() {
+  const el   = document.getElementById('links-list');
+  const det  = document.getElementById('link-detail');
+  const frow = document.getElementById('link-filter-row');
+  document.getElementById('link-count').textContent = '' + S.links.length;
+  document.getElementById('desel-link-btn').style.display = S.selectedLinkId ? '' : 'none';
+
+  if (!S.links.length) {
+    frow.style.display = 'none'; det.style.display = 'none';
+    el.innerHTML = '<div class="empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#8596;</div>No links found</div>';
+    return;
+  }
+  frow.style.display = '';
+
+  // O(1) lookup maps
+  const elemMap2 = new Map(S.elements.map(e => [e.id, e]));
+  const actorMap2 = new Map(S.actors.map(a => [a.id, a]));
+  const filt = S.linkFilter === 'all'
+    ? S.links
+    : S.links.filter(l => l.type === S.linkFilter);
+
+  if (!filt.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#8596;</div>No links of this type</div>';
+  } else {
+    el.innerHTML = filt.map(link => {
+      const src = elemMap2.get(link.sourceId);
+      const tgt = elemMap2.get(link.targetId);
+      const srcName = src ? src.name : '(unknown)';
+      const tgtName = tgt ? tgt.name : '(unknown)';
+      const tc = linkTypeClass(link);
+      const tl = linkTypeLabel(link);
+      const valHtml = link.type==='Contribution' && link.value!=null
+        ? '<span class="link-value '+(link.value>0?'lv-pos':'lv-neg')+'">'+(link.value>0?'+':'')+link.value+'</span>' : '';
+      const crossHtml = link.crossActor ? '<span class="link-meta-chip">cross-actor</span>' : '';
+      const srcActor  = actorMap2.get(link.sourceActorId);
+      const tgtActor  = actorMap2.get(link.targetActorId);
+      const actorHtml = srcActor ? '<span class="link-meta-chip">'+esc(srcActor.name)+'</span>' : '';
+      const tgtActorHtml = link.crossActor && tgtActor ? '<span class="link-meta-chip">&#8594; '+esc(tgtActor.name)+'</span>' : '';
+      return '<div class="link-item'+(S.selectedLinkId===link.id?' selected':'')+'" onclick="selectLink(\''+esc(link.id)+'\')">'
+        +'<div class="link-row">'
+        +'<span class="link-type '+tc+'">'+tl+'</span>'
+        +valHtml
+        +'<span class="link-names"><span class="link-src">'+esc(srcName)+'</span>'
+        +' <span class="link-arrow">&#8594;</span> '
+        +'<span class="link-tgt">'+esc(tgtName)+'</span></span>'
+        +'</div>'
+        +(actorHtml||crossHtml ? '<div class="link-meta">'+actorHtml+tgtActorHtml+crossHtml+'</div>' : '')
+        +'</div>';
+    }).join('');
+  }
+
+  // Detail panel
+  if (S.selectedLinkId) {
+    const link = S.links.find(l => l.id === S.selectedLinkId);
+    if (link) {
+      const src = S.elements.find(e => e.id === link.sourceId);
+      const tgt = S.elements.find(e => e.id === link.targetId);
+      const srcA = S.actors.find(a => a.id === link.sourceActorId);
+      const tgtA = S.actors.find(a => a.id === link.targetActorId);
+      const rows = [
+        ['Type',   linkTypeLabel(link)],
+        ['Source', (src ? '['+src.type+'] '+src.name : '?') + (srcA ? ' ('+srcA.name+')' : '') + (src&&src.importance!=null?' — imp:'+src.importance:'')],
+        ['Target', (tgt ? '['+tgt.type+'] '+tgt.name : '?') + (tgtA ? ' ('+tgtA.name+')' : '') + (tgt&&tgt.importance!=null?' — imp:'+tgt.importance:'')],
+      ];
+      if (link.type==='Contribution' && link.value!=null) rows.push(['Value', (link.value>0?'+':'')+link.value]);
+      if (link.type==='Decomposition' && link.subtype)   rows.push(['Decomp', link.subtype.toUpperCase()]);
+      rows.push(['Cross-actor', link.crossActor ? 'Yes' : 'No']);
+      det.style.display = '';
+      det.innerHTML = rows.map(([lbl,val]) =>
+        '<div class="link-detail-row"><span class="link-detail-label">'+esc(lbl)+'</span><span class="link-detail-val">'+esc(val)+'</span></div>'
+      ).join('');
+    } else { det.style.display='none'; }
+  } else { det.style.display='none'; }
+}
+function selectLink(id) {
+  S.selectedLinkId = S.selectedLinkId === id ? null : id;
+  renderLinks();
+  document.getElementById('desel-link-btn').style.display = S.selectedLinkId ? '' : 'none';
+}
+function deselectLink() { S.selectedLinkId = null; renderLinks(); }
+function setLinkFilter(f) {
+  S.linkFilter = f;
+  ['all','Decomposition','Contribution','Dependency'].forEach(k => {
+    const btn = document.getElementById('lf-' + k);
+    if (btn) btn.classList.toggle('active', k === f);
+  });
+  renderLinks();
+}
+
+function selectActor(id) {
+  S.selectedActorId=S.selectedActorId===id?null:id;
+  const a=S.actors.find(x=>x.id===S.selectedActorId);
+  const cb=document.getElementById('clear-actor-btn'), fp=document.getElementById('filter-pill');
+  if(a){cb.style.display='';fp.style.display='';fp.innerHTML='<span class="filter-pill">'+esc(a.name)+' <button onclick="clearActorFilter()">&#10005;</button></span>';}
+  else{cb.style.display='none';fp.style.display='none';}
+  renderActors();renderElements();updateSummary();
+}
+function clearActorFilter(){S.selectedActorId=null;document.getElementById('clear-actor-btn').style.display='none';document.getElementById('filter-pill').style.display='none';renderActors();renderElements();updateSummary();}
+function toggleElem(id){if(S.selectedElemIds.has(id)){S.selectedElemIds.clear();}else{S.selectedElemIds.clear();S.selectedElemIds.add(id);}renderElements();updateSummary();}
+function deselectAllElements(){S.selectedElemIds.clear();renderElements();updateSummary();}
+function updateSummary() {
+  const a=S.actors.find(x=>x.id===S.selectedActorId);
+  document.getElementById('btn-elem-sat').disabled=S.selectedElemIds.size===0;
+  document.getElementById('btn-actor-sat').disabled=S.selectedActorId===null;
+  const hasElem=S.selectedElemIds.size>0, hasActor=S.selectedActorId!==null;
+  document.getElementById('btn-threshold').disabled=!hasElem&&!hasActor;
+  const ttl=document.getElementById('threshold-target-label');
+  if(hasElem){
+    const el=S.elements.find(e=>S.selectedElemIds.has(e.id));
+    ttl.textContent='Target: ['+el.type+'] '+el.name;
+    ttl.style.display='';
+  } else if(hasActor){
+    ttl.textContent='Target: Actor '+a.name;
+    ttl.style.display='';
+  } else {
+    ttl.style.display='none';
+  }
+  if(!S.actors.length){document.getElementById('selection-summary').textContent='No model loaded \u00b7 upload a GRL file to begin';return;}
+  const lines=['Model: '+S.actors.length+' actor(s)  '+S.elements.length+' element(s)  '+S.links.length+' link(s)'];
+  if(a) lines.push('Actor filter: '+a.name);
+  lines.push(S.selectedElemIds.size?'Selected element: '+S.elements.find(e=>S.selectedElemIds.has(e.id))?.name:'Select an actor or element to enable analysis');
+  document.getElementById('selection-summary').textContent=lines.join('\n');
+}
+
+// ── Context + queries ──────────────────────────────────────────────────────
+function buildCtx() {
+  if (!S.grlJson) return null;
+  return [
+    'GRL Model (JSON):',
+    '',
+    'Schema:',
+    '- actors: [{id, name}]',
+    '- elements: [{id, name, type (Goal|SoftGoal|Task|Resource|Belief), actorId, importance? (weight/priority), decompositionType? (and|or)}]',
+    '- links: [{id, type (Decomposition|Contribution|Dependency), subtype? (and|or, Decomposition only), value? (signed integer, Contribution only), sourceId, targetId, sourceActorId?, targetActorId?, crossActor (true if link spans two actors)}]',
+    '',
+    S.grlJson,
+  ].join('\n');
+}
+async function submitQuery() {
+  const q=document.getElementById('query-area').value.trim();
+  if(!q||S.busy) return;
+  const ctx=buildCtx();
+  await runLLM(ctx?'You are a GRL analyst. Answer the following question about this GRL model.\n\n'+ctx+'\n\nQuestion: '+q:q,'Query: '+q.slice(0,80)+(q.length>80?'...':''),S.imageBase64);
+}
+
+// ── Shared strategy prompt builder ────────────────────────────────────────
+function buildStrategyPrompt(scopeDesc, rangeDesc) {
+  const ctx = buildCtx();
+  return [
+    `Given the GRL model below, produce a satisfaction strategy to maximize ${scopeDesc}.`,
+    S.grlRefPdf
+      ? 'Apply GRL satisfaction propagation rules from the attached reference document.'
+      : GRL_PROPAGATION_RULES,
+    '',
+    ctx,
+    '',
+    'CONSTRAINT: Seed only leaf elements (elements with no incoming decomposition or contribution links), regardless of type. All non-leaf values must be propagated upward through the GRL links.',
+    '',
+    'Respond with ONLY a raw JSON object — no markdown, no explanation:',
+    '{"seeds":[{"name":"...","type":"Goal|SoftGoal|Task|Resource|Belief","actor":"...","satisfaction":75}],"model":[{"name":"...","type":"Goal|SoftGoal|Task|Resource|Belief","actor":"...","satisfaction":50}]}',
+    `- seeds: leaf elements only, ordered highest to lowest satisfaction.`,
+    `- model: ALL elements with their final propagated satisfaction (integer ${rangeDesc}), grouped by actor, descending.`,
+    '- Output ONLY the JSON object, nothing else.',
+  ].join('\n');
+}
+
+async function maximizeElementSatisfaction() {
+  if(S.busy||!S.selectedElemIds.size) return;
+  const a=S.actors.find(x=>x.id===S.selectedActorId);
+  const sel=S.elements.filter(e=>S.selectedElemIds.has(e.id));
+  const target=sel.length?sel[0]:null;
+  const scopeLabel=target?('['+target.type+'] '+target.name):a?a.name:'all elements';
+  const scopeDesc=target?('the intentional element: ['+target.type+'] '+target.name+(a?' (within actor: '+a.name+')':'')):
+    a?('all intentional elements of actor: '+a.name):'all intentional elements in the model';
+  const {min:_rMin,max:_rMax}=getSatRange();
+  const rangeDesc='in ['+_rMin+'; '+_rMax+'] where '+_rMin+' = fully denied, '+_rMax+' = fully satisfied';
+  await runLLMStrategy(buildStrategyPrompt(scopeDesc,rangeDesc),'Strategy \u2014 '+scopeLabel);
+}
+async function maximizeActorSatisfaction() {
+  if(S.busy||!S.selectedActorId) return;
+  const a=S.actors.find(x=>x.id===S.selectedActorId);
+  if(!a) return;
+  const {min:_rMin2,max:_rMax2}=getSatRange();
+  const rangeDesc='in ['+_rMin2+'; '+_rMax2+'] where '+_rMin2+' = fully denied, '+_rMax2+' = fully satisfied';
+  const scopeDesc='actor: '+a.name;
+  await runLLMStrategy(buildStrategyPrompt(scopeDesc,rangeDesc),'Actor Strategy \u2014 '+a.name);
+}
+async function reachThreshold() {
+  if (S.busy) return;
+  const raw = document.getElementById('threshold-input').value.trim();
+  const threshold = parseInt(raw, 10);
+  const {min: _rMin, max: _rMax} = getSatRange();
+  if (isNaN(threshold)) { alert('Please enter a threshold value.'); return; }
+  if (threshold < _rMin || threshold > _rMax) { alert('Threshold must be within the current range [' + _rMin + '; ' + _rMax + '].'); return; }
+
+  const ctx = buildCtx();
+  const a = S.actors.find(x => x.id === S.selectedActorId);
+  const sel = S.elements.filter(e => S.selectedElemIds.has(e.id));
+  const target = sel.length ? sel[0] : null;
+  if (!target && !a) return;
+
+  const {min: _rMin2, max: _rMax2} = getSatRange();
+  const rangeDesc = 'in [' + _rMin2 + '; ' + _rMax2 + '] where ' + _rMin2 + ' = fully denied, ' + _rMax2 + ' = fully satisfied';
+
+  let scopeDesc, scopeLabel;
+  if (target) {
+    scopeDesc = 'the intentional element: [' + target.type + '] ' + target.name + (a ? ' (within actor: ' + a.name + ')' : '');
+    scopeLabel = 'Threshold \u2265' + threshold + ' \u2014 [' + target.type + '] ' + target.name;
+  } else {
+    scopeDesc = 'actor: ' + a.name;
+    scopeLabel = 'Threshold \u2265' + threshold + ' \u2014 Actor ' + a.name;
+  }
+
+  const rules = S.grlRefPdf
+    ? 'Apply GRL satisfaction propagation rules from the attached reference document.'
+    : GRL_PROPAGATION_RULES;
+
+  const p = [
+    'Given the GRL model below, make ' + scopeDesc + ' reach or surpass ' + threshold + '.',
+    'If unattainable, maximize instead and set "threshold_reached": false.',
+    rules,
+    '',
+    ctx,
+    '',
+    'CONSTRAINT: Seed only leaf elements (elements with no incoming decomposition or contribution links), regardless of type. All non-leaf values must be propagated upward through the GRL links.',
+    '',
+    'Respond with ONLY a raw JSON object — no markdown, no explanation:',
+    '{"threshold_reached":true,"seeds":[{"name":"...","type":"Goal|SoftGoal|Task|Resource|Belief","actor":"...","satisfaction":75}],"model":[{"name":"...","type":"Goal|SoftGoal|Task|Resource|Belief","actor":"...","satisfaction":50}]}',
+    '- threshold_reached: true if ' + scopeDesc + ' reaches \u2265' + threshold + '; false if unattainable (also include "best_achievable":<integer>).',
+    '- seeds: leaf elements only, ordered highest to lowest satisfaction.',
+    '- model: ALL elements with their final propagated satisfaction (integer ' + rangeDesc + '), grouped by actor, descending.',
+    '- Output ONLY the JSON object, nothing else.',
+  ].join('\n');
+
+  await runLLMStrategy(p, scopeLabel);
+}
+async function runLLMStrategy(prompt, label) {
+  if(S.busy) return; S.busy=true; setBusy(true,'Generating strategy...');
+
+  // Show strategy panel and split output panel
+  const stratPanel=document.getElementById('strategy-panel');
+  const outPanel=document.getElementById('output-panel');
+  stratPanel.style.display='flex';
+  setSplitMode(true);
+
+  // Set title and loading state in strategy panel
+  const body=document.getElementById('strategy-body');
+  body.innerHTML='<div class="strat-title-label">'+esc(label)+'</div>'
+    +'<div class="strat-panel-loading"><span class="strat-loading">&#9711; Analysing\u2026</span></div>';
+
+  let full='';
+  try {
+    // Collect stream silently — never write raw JSON to DOM
+    await llmStream(prompt,null,(_,f)=>{full=f;},S.grlRefPdf);
+    const clean=full.replace(/```json|```/gi,'').trim();
+    let parsed=null;
+    try{parsed=JSON.parse(clean);}catch(_){
+      const m=clean.match(/\{[\s\S]*\}/); if(m) try{parsed=JSON.parse(m[0]);}catch(_){}
+    }
+    // New format: {seeds:[...], model:[...]}
+    if(parsed && Array.isArray(parsed.seeds) && parsed.seeds.length) {
+      let html = '<div class="strat-title-label">'+esc(label)+'</div>';
+      // PDF-ignored warning (model doesn't support file content type — retried without PDF)
+      if (S._pdfIgnored) {
+        html += '<div class="strat-pdf-warn-banner">&#128274; PDF reference skipped \u2014 this model does not support file attachments. Using built-in propagation rules.</div>';
+      }
+      // Threshold attainability banner
+      if (parsed.threshold_reached === false) {
+        const bestStr = (typeof parsed.best_achievable === 'number')
+          ? ' \u2014 best achievable: ' + (parsed.best_achievable > 0 ? '+' : '') + parsed.best_achievable
+          : '';
+        html += '<div class="strat-unattainable-banner">&#9888; Threshold unattainable' + bestStr + ' \u2014 showing best-effort maximum</div>';
+      } else if (parsed.threshold_reached === true) {
+        html += '<div class="strat-threshold-ok-banner">&#10003; Threshold reached</div>';
+      }
+      html += '<div class="strat-section-label">&#9656; Seeds</div>';
+      html += renderStrategyTable(parsed.seeds);
+      if(Array.isArray(parsed.model) && parsed.model.length) {
+        html += '<div class="strat-section-label" style="margin-top:10px">&#9656; Propagated Model</div>';
+        html += renderStrategyModelSection(parsed.model);
+      }
+      body.innerHTML = html;
+    // Legacy fallback: {elements:[...]}
+    } else if(parsed&&Array.isArray(parsed.elements)&&parsed.elements.length){
+      body.innerHTML='<div class="strat-title-label">'+esc(label)+'</div>'+renderStrategyTable(parsed.elements);
+    } else {
+      body.innerHTML='<div class="strat-title-label">'+esc(label)+'</div>'
+        +'<div class="output-text" style="padding:4px 0;white-space:pre-wrap">'+esc(full)+'</div>';
+    }
+  } catch(err){
+    if(err.name==='AbortError'){
+      body.innerHTML='<div class="strat-title-label">'+esc(label)+'</div>'
+        +'<div class="output-text" style="padding:4px 0;color:var(--muted)">[— interrupted —]</div>';
+    } else {
+      body.innerHTML='<div class="strat-title-label">'+esc(label)+'</div>'
+        +'<div class="output-text" style="padding:4px 0">Error: '+esc(err.message)
+        +'\n\n- Check your provider connection and API key\n- Make sure the selected model is available</div>';
+    }
+  }
+  setBusy(false); S.busy=false;
+}
+function clearStrategy(){
+  document.getElementById('strategy-panel').style.display='none';
+  document.getElementById('output-panel').classList.remove('split');
+  setSplitMode(false);
+  document.getElementById('strategy-body').innerHTML=
+    '<div class="strat-panel-empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#9650;</div>Run a maximize to see strategy</div>';
+}
+function renderStrategyTable(elems) {
+  const typeColors={'Goal':'rgba(30,74,122,.12);color:var(--goal)','SoftGoal':'rgba(90,52,128,.12);color:var(--softgoal)','Task':'rgba(179,79,15,.12);color:var(--task)','Resource':'rgba(30,102,69,.12);color:var(--resource)','Belief':'rgba(139,34,82,.12);color:var(--belief)'};
+  const rows=elems.map(e=>{
+    const tc=typeColors[e.type]||typeColors['Goal'];
+    const v=Math.max(-100,Math.min(100,typeof e.satisfaction==='number'?e.satisfaction:0));
+    const vc=satNumColor(v);
+    const numStr=(v>0?'+':'')+v;
+    return '<tr>'
+      +'<td><span class="s-type" style="background:'+tc.split(';')[0]+';'+tc.split(';')[1]+'">'+(e.type||'?')+'</span></td>'
+      +'<td class="s-name">'+esc(e.name||'')+'</td>'
+      +'<td class="s-actor">'+esc(e.actor||'')+'</td>'
+      +'<td class="s-val-cell" style="color:'+vc+'">'+numStr+'</td>'
+      +'</tr>';
+  }).join('');
+  return '<table class="strat-table"><thead><tr>'
+    +'<th style="font-family:var(--mono);font-size:8px;color:var(--muted);text-align:left;padding:3px 8px;font-weight:400;text-transform:uppercase;letter-spacing:.08em">Type</th>'
+    +'<th style="font-family:var(--mono);font-size:8px;color:var(--muted);text-align:left;padding:3px 8px;font-weight:400;text-transform:uppercase;letter-spacing:.08em">Element</th>'
+    +'<th style="font-family:var(--mono);font-size:8px;color:var(--muted);text-align:left;padding:3px 8px;font-weight:400;text-transform:uppercase;letter-spacing:.08em">Actor</th>'
+    +'<th style="font-family:var(--mono);font-size:8px;color:var(--muted);text-align:right;padding:3px 8px;font-weight:400;text-transform:uppercase;letter-spacing:.08em">Sat</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function renderStrategyModelSection(elems) {
+  const {min: rMin, max: rMax} = getSatRange();
+  const typeColors = {
+    'Goal':     'rgba(26,61,114,.1);color:var(--goal)',
+    'SoftGoal': 'rgba(72,40,128,.1);color:var(--softgoal)',
+    'Task':     'rgba(168,74,0,.1);color:var(--task)',
+    'Resource': 'rgba(24,92,60,.1);color:var(--resource)',
+    'Belief':   'rgba(122,26,82,.1);color:var(--belief)',
+  };
+  const satC = v => {
+    const pct = (v - rMin) / (rMax - rMin);
+    if(pct >= 0.75) return 'var(--green)';
+    if(pct >= 0.5)  return '#2e7d52';
+    if(pct >= 0.25) return 'var(--orange)';
+    return 'var(--red)';
+  };
+  const bar = v => {
+    const pct = Math.max(0, Math.min(100, ((v - rMin) / (rMax - rMin)) * 100));
+    const c   = satC(v);
+    const lbl = (v > 0 ? '+' : '') + v;
+    return '<div class="strat-bar-row">'
+      +'<div class="strat-bar"><div class="strat-bar-fill" style="width:'+pct+'%;background:'+c+'"></div></div>'
+      +'<span class="strat-val" style="color:'+c+'">'+lbl+'</span>'
+      +'</div>';
+  };
+  // Build importance lookup from the loaded model, keyed by trimmed lowercase name.
+  // Mirrors the propagation feature which reads importance from S.elements.
+  const importanceByName = new Map();
+  for(const e of S.elements) {
+    if(e.importance != null) importanceByName.set(e.name.trim().toLowerCase(), e.importance);
+  }
+  // Group by actor name
+  const byActor = {};
+  for(const e of elems) {
+    const key = e.actor || '(unlinked)';
+    if(!byActor[key]) byActor[key] = [];
+    byActor[key].push(e);
+  }
+  let html = '';
+  for(const [actorName, aElems] of Object.entries(byActor)) {
+    // Importance-weighted average — only elements that have an importance value
+    // are included, exactly matching the propagation feature logic.
+    const weighted = aElems.filter(e => importanceByName.has((e.name||'').trim().toLowerCase()));
+    let avg;
+    if(weighted.length) {
+      const totalW      = weighted.reduce((s,e) => s + importanceByName.get((e.name||'').trim().toLowerCase()), 0);
+      const weightedSum = weighted.reduce((s,e) => {
+        const imp = importanceByName.get((e.name||'').trim().toLowerCase());
+        const v   = typeof e.satisfaction === 'number' ? e.satisfaction : 0;
+        return s + v * imp;
+      }, 0);
+      avg = totalW > 0 ? Math.round(weightedSum / totalW) : 0;
+    } else {
+      avg = 0; // no importance values on any element in this actor — matches propagation behaviour
+    }
+    html += '<div style="margin-bottom:5px;border:1px solid var(--border);border-radius:5px;overflow:hidden">';
+    html += '<div style="display:flex;align-items:center;gap:7px;padding:4px 8px;background:var(--surface);border-bottom:1px solid var(--border)">';
+    html += '<span style="font-size:11.5px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">'+esc(actorName)+'</span>';
+    html += '<span style="font-family:var(--mono);font-size:8px;color:var(--muted);flex-shrink:0">avg</span>';
+    html += bar(avg);
+    html += '</div>';
+    aElems.forEach((e, idx) => {
+      const v  = typeof e.satisfaction === 'number' ? e.satisfaction : 0;
+      const tc = (typeColors[e.type] || typeColors['Goal']).split(';');
+      const last = idx === aElems.length - 1;
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:3px 8px;'+(last?'':'border-bottom:1px solid var(--border)')+'">';
+      html += '<span style="font-family:var(--mono);font-size:7.5px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+tc[0]+';'+tc[1]+';text-transform:uppercase;flex-shrink:0;min-width:50px;text-align:center">'+esc(e.type||'?')+'</span>';
+      html += '<span style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(e.name||'')+'">'+esc(e.name||'')+'</span>';
+      html += bar(v);
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  return html;
+}
+async function runLLM(prompt, label, image) {
+  if(S.busy) return; S.busy=true; setBusy(true,'Generating...');
+  const entry=appendMsg('',true); entry.querySelector('.output-label').textContent=label;
+  const textEl=entry.querySelector('.output-text');
+  try {
+    await llmStream(prompt,image,(_,f)=>{textEl.textContent=f;scrollOut()},S.grlRefPdf);
+    if (S._pdfIgnored) textEl.textContent += '\n\n\u26a0 PDF reference skipped \u2014 this model does not support file attachments. Response used built-in propagation rules.';
+  }
+  catch(err){
+    if(err.name==='AbortError'){
+      textEl.textContent=(textEl.textContent||'').trimEnd()+'\n\n[— interrupted —]';
+    } else {
+      textEl.textContent='Error: '+err.message+'\n\n- Check your provider connection and API key\n- Make sure the selected model is available';
+    }
+  }
+  textEl.classList.remove('streaming'); setBusy(false); S.busy=false;
+}
+
+// ── Output helpers ─────────────────────────────────────────────────────────
+function appendMsg(text, streaming) {
+  const body=document.getElementById('output-body');
+  const e2=body.querySelector('.empty'); if(e2) e2.remove();
+  const entry=document.createElement('div'); entry.className='output-entry';
+  const lbl=document.createElement('div'); lbl.className='output-label'; lbl.textContent=text; entry.appendChild(lbl);
+  const t=document.createElement('div');t.className='output-text'+(streaming?' streaming':'');entry.appendChild(t);
+  body.appendChild(entry); scrollOut(); return entry;
+}
+function scrollOut(){const b=document.getElementById('output-body');b.scrollTop=b.scrollHeight;}
+function clearOutput(){document.getElementById('output-body').innerHTML='<div class="empty"><div class="empty-icon" style="font-size:18px;opacity:.3">&#9677;</div>Responses will appear here</div>';}
+function clearQueryArea(){document.getElementById('query-area').value='';}
+function interruptLLM(){
+  if(S_abortCtrl){S_abortCtrl.abort();}
+  // runLLM/runLLMStrategy will catch AbortError and call setBusy(false)
+}
+function resetAll(){
+  if(!confirm('Reset all? This will clear the loaded model, all output, and the query area.')) return;
+  if(S_abortCtrl){S_abortCtrl.abort();S_abortCtrl=null;}
+  S.actors=[];S.elements=[];S.links=[];S.selectedActorId=null;S.selectedElemIds.clear();S.selectedLinkId=null;
+  S.imageBase64=null;S.imageMimeType=null;S.fileName=null;S.busy=false;S._actorSat={};S.grlJson=null;
+  // Reset upload zone
+  const uz=document.getElementById('upload-zone');
+  uz.className=''; // remove loaded/dragover classes
+  document.getElementById('upload-label').textContent='Drop GRL file or click to upload (.grl .xgrl .xml .txt \u00b7 image)';
+  document.getElementById('file-input').value='';
+  renderActors();renderElements();renderLinks();updateSummary();
+  clearOutput();clearStrategy();clearQueryArea();
+  // Clear file history sidebar
+  FILE_HISTORY.length=0; ACTIVE_SNAP_ID=null; renderFilesSidebar();
+  setBusy(false);
+}
+function setBusy(on,msg){
+  document.getElementById('output-status').textContent=msg||'Ready';
+  document.getElementById('output-status').style.color=on?'var(--accent)':'var(--muted2)';
+  const iBtn=document.getElementById('interrupt-btn');
+  if(iBtn) iBtn.style.display=on?'flex':'none';
+  if(!on){
+    const d=document.getElementById('status-dot');if(d.className==='busy')d.className='ok';
+    S_abortCtrl=null;
+  }
+}
+function onSatRangeInput() { /* no-op: manual range inputs removed */ }
+function applySatRange() {
+  const {min, max} = getSatRange();
+  if (isNaN(min) || isNaN(max) || min >= max) return;
+  // Update legend
+  const leg = document.getElementById('sat-legend-range');
+  if (leg) leg.textContent = `numeric · [${min};${max}]`;
+  // Update run-bar range badge
+  const rb = document.getElementById('sat-run-range');
+  if (rb) rb.textContent = `[${min};${max}]`;
+  // Update output + strategy panel header badges
+  const ob = document.getElementById('output-range-badge');
+  if (ob) ob.textContent = `[${min};${max}]`;
+  const sb = document.getElementById('strategy-range-badge');
+  if (sb) sb.textContent = `[${min};${max}]`;
+  // Re-render elements so sat inputs/badges reflect new range
+  if (S.satMode) renderElements();
+  _syncPresetHighlights(min, max);
+}
+function setRangePreset(min, max) {
+  // Store range directly in S.satRange
+  S.satRange = min + ':' + max;
+  applySatRange();
+  _syncPresetHighlights(min, max);
+}
+function _syncPresetHighlights(min, max) {
+  const presets = [
+    { id: 'rp-0-100',    min: 0,    max: 100 },
+    { id: 'rp-n100-100', min: -100, max: 100 },
+  ];
+  presets.forEach(p => {
+    const btn = document.getElementById(p.id);
+    if (btn) btn.classList.toggle('active', p.min === min && p.max === max);
+  });
+}
+// legacy compat shim
+function setSatRange(r) {
+  if (r === '-100:100') setRangePreset(-100, 100);
+  else setRangePreset(0, 100);
+}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+document.getElementById('query-area').addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();submitQuery();}});
+
+// Auto-ping when API key is pasted (debounced)
+let _keyDebounce = null;
+document.getElementById('api-key').addEventListener('input', () => {
+  clearTimeout(_keyDebounce);
+  const key = document.getElementById('api-key').value.trim();
+  if (!key) return;
+  _keyDebounce = setTimeout(() => {
+    if (S.provider !== 'ollama') pingCloud();
+  }, 600);
+});
+
+
+// ── Panel resize system ────────────────────────────────────────────────────
+const LS = {
+  cols: [200, null, 250, 270], // c2 (elements) is derived; null = calc on init
+  rowBottom: 180,              // output panel height in px
+  splitXBottom: null,          // output panel width in bottom row (independent of top cols)
+};
+
+function initLayout() {
+  const main = document.getElementById('main');
+  const total = main.offsetWidth;
+  if (LS.cols[1] === null) {
+    LS.cols[1] = Math.max(80, total - LS.cols[0] - LS.cols[2] - LS.cols[3]);
+  }
+  applyLayout();
+}
+
+function applyLayout() {
+  const main = document.getElementById('main');
+  const [c1, c2, c3, c4] = LS.cols;
+  main.style.gridTemplateColumns = `${c1}px ${c2}px ${c3}px ${c4}px`;
+  const totalH = main.offsetHeight;
+  const rowTop = Math.max(60, totalH - LS.rowBottom);
+  main.style.gridTemplateRows = `${rowTop}px ${LS.rowBottom}px`;
+  positionVHandles(c1, c2, c3, rowTop, totalH);
+}
+
+function positionVHandles(c1, c2, c3, rowTop, totalH) {
+  // VR1 & VR2: only top row
+  const vr1 = document.getElementById('vr1');
+  vr1.style.left = c1 + 'px';
+  vr1.style.top  = '0';
+  vr1.style.height = rowTop + 'px';
+
+  const vr2 = document.getElementById('vr2');
+  vr2.style.left = (c1 + c2) + 'px';
+  vr2.style.top  = '0';
+  vr2.style.height = rowTop + 'px';
+
+  // VR3: full height — query panel (col 4) spans both rows
+  const vr3 = document.getElementById('vr3');
+  vr3.style.left = (c1 + c2 + c3) + 'px';
+  vr3.style.top  = '0';
+  vr3.style.height = totalH + 'px';
+
+  // VR4: output/strategy boundary — bottom row only, independent of top columns
+  const vr4 = document.getElementById('vr4');
+  if (vr4.style.display !== 'none') {
+    vr4.style.left   = (LS.splitXBottom !== null ? LS.splitXBottom : (c1 + c2)) + 'px';
+    vr4.style.top    = rowTop + 'px';
+    vr4.style.height = (totalH - rowTop) + 'px';
+  }
+}
+
+function makeVResizeDrag(vrId, colA, colB) {
+  // colA and colB are indices into LS.cols that this handle sits between
+  document.getElementById(vrId).addEventListener('mousedown', e => {
+    e.preventDefault();
+    const startX   = e.clientX;
+    const startA   = LS.cols[colA];
+    const startB   = LS.cols[colB];
+    const handle   = document.getElementById(vrId);
+    handle.classList.add('rz-active');
+    document.body.classList.add('col-resizing');
+
+    function onMove(e) {
+      const dx = e.clientX - startX;
+      const newA = Math.max(80, startA + dx);
+      const newB = Math.max(80, startB - (newA - startA));
+      LS.cols[colA] = newA;
+      LS.cols[colB] = newB;
+      applyLayout();
+    }
+    function onUp() {
+      handle.classList.remove('rz-active');
+      document.body.classList.remove('col-resizing');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+function initOutputRowResize() {
+  const heads = [
+    document.querySelector('#output-panel .panel-head'),
+    document.querySelector('#strategy-panel .panel-head'),
+  ];
+  heads.forEach(head => {
+    if (!head) return;
+    head.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const startY      = e.clientY;
+      const startBottom = LS.rowBottom;
+      const main        = document.getElementById('main');
+      heads.forEach(h => h && h.classList.add('rz-active'));
+      document.body.classList.add('row-resizing');
+
+      function onMove(e) {
+        const dy = e.clientY - startY;   // positive = mouse moved down
+        const totalH = main.offsetHeight;
+        // dragging head upward (dy < 0) → output panel grows
+        LS.rowBottom = Math.max(60, Math.min(totalH - 60, startBottom - dy));
+        applyLayout();
+      }
+      function onUp() {
+        heads.forEach(h => h && h.classList.remove('rz-active'));
+        document.body.classList.remove('row-resizing');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+}
+
+function applyBottomSplit() {
+  const outPanel  = document.getElementById('output-panel');
+  const stratPanel = document.getElementById('strategy-panel');
+  if (stratPanel.style.display !== 'none' && LS.splitXBottom !== null) {
+    outPanel.style.width = LS.splitXBottom + 'px';
+    outPanel.style.flex  = 'none';
+    stratPanel.style.flex  = '1';
+    stratPanel.style.width = '';
+  } else {
+    outPanel.style.width = '';
+    outPanel.style.flex  = '1';
+  }
+}
+
+function initSplitResize() {
+  // vr4 has its own independent state (splitXBottom) — does NOT touch LS.cols
+  document.getElementById('vr4').addEventListener('mousedown', e => {
+    e.preventDefault();
+    const startX     = e.clientX;
+    const startSplit = LS.splitXBottom;
+    const handle     = document.getElementById('vr4');
+    handle.classList.add('rz-active');
+    document.body.classList.add('col-resizing');
+    const main = document.getElementById('main');
+
+    function onMove(e) {
+      const availW  = main.offsetWidth - LS.cols[3]; // bottom row spans cols 1-3
+      LS.splitXBottom = Math.max(80, Math.min(availW - 80, startSplit + (e.clientX - startX)));
+      applyBottomSplit();
+      applyLayout(); // reposition the vr4 handle
+    }
+    function onUp() {
+      handle.classList.remove('rz-active');
+      document.body.classList.remove('col-resizing');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+function setSplitMode(on) {
+  document.getElementById('vr4').style.display = on ? '' : 'none';
+  if (on) {
+    if (LS.splitXBottom === null) {
+      const main = document.getElementById('main');
+      LS.splitXBottom = Math.round((main.offsetWidth - LS.cols[3]) * 0.6);
+    }
+    applyBottomSplit();
+    applyLayout(); // reposition vr4 immediately
+  } else {
+    applyBottomSplit(); // reset output panel to full flex width
+  }
+}
+window.addEventListener('resize', () => {
+  const main = document.getElementById('main');
+  const total = main.offsetWidth;
+  const fixed = LS.cols[0] + LS.cols[2] + LS.cols[3];
+  LS.cols[1] = Math.max(80, total - fixed);
+  applyLayout();
+});
+
+// Boot resize system
+makeVResizeDrag('vr1', 0, 1);   // actors | elements
+makeVResizeDrag('vr2', 1, 2);   // elements | links
+makeVResizeDrag('vr3', 2, 3);   // links | query
+initSplitResize();               // output | strategy (vr4, bottom row)
+initOutputRowResize();
+initLayout();
+
+pingBackend();
+setInterval(()=>{ if(S.provider==='ollama') pingOllama(); },30000);
+setRangePreset(0, 100);
+initParamSliders();
+// ═══════════════════════════════════════════════════════════════════════════
+// ── Image file history sidebar ───────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+
+const FILE_HISTORY = [];   // array of snapshot objects, newest last
+let   ACTIVE_SNAP_ID = null; // id of the snapshot whose analysis is in S (null = "live")
+
+// Snapshot schema:
+// { id, fileName, imageBase64, actors, elements, links,
+//   satValues, satPropagated, outputHtml }
+
+function _snapId() { return 'snap_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+// Save the current S into history (called before loading a new image, if model loaded)
+function saveCurrentSnapshot() {
+  if (!S.imageBase64 || (!S.actors.length && !S.elements.length)) return;
+  const snap = {
+    id: _snapId(),
+    fileName: S.fileName || 'image',
+    imageBase64: S.imageBase64,
+    imageMimeType: S.imageMimeType || 'image/jpeg',
+    actors: JSON.parse(JSON.stringify(S.actors)),
+    elements: JSON.parse(JSON.stringify(S.elements)),
+    links: JSON.parse(JSON.stringify(S.links)),
+    satValues: Object.assign({}, S.satValues),
+    satPropagated: Object.assign({}, S.satPropagated),
+    outputHtml: document.getElementById('output-body').innerHTML,
+  };
+  // Deduplicate by base64 prefix (first 64 chars is a fast fingerprint; 
+  // full comparison on match to avoid rare false positives)
+  const THUMB_KEY = snap.imageBase64.slice(0, 64);
+  const dupIdx = FILE_HISTORY.findIndex(s => s.imageBase64.slice(0, 64) === THUMB_KEY && s.imageBase64 === snap.imageBase64);
+  if (dupIdx >= 0) { FILE_HISTORY[dupIdx] = snap; }
+  else {
+    FILE_HISTORY.push(snap);
+    // Cap history to 15 entries to prevent memory growth from large base64 blobs
+    const MAX_HISTORY = 15;
+    if (FILE_HISTORY.length > MAX_HISTORY) FILE_HISTORY.splice(0, FILE_HISTORY.length - MAX_HISTORY);
+  }
+  ACTIVE_SNAP_ID = snap.id;
+  renderFilesSidebar();
+}
+
+// Restore a snapshot into S and all panels
+function restoreSnapshot(id) {
+  // If we're currently viewing live analysis, save it first
+  if (ACTIVE_SNAP_ID !== id) {
+    // Save live state to its slot (the most recent one)
+    const liveSnap = FILE_HISTORY.find(s => s.id === ACTIVE_SNAP_ID);
+    if (liveSnap) {
+      liveSnap.outputHtml = document.getElementById('output-body').innerHTML;
+      liveSnap.actors = JSON.parse(JSON.stringify(S.actors));
+      liveSnap.elements = JSON.parse(JSON.stringify(S.elements));
+      liveSnap.links = JSON.parse(JSON.stringify(S.links));
+      liveSnap.satValues = Object.assign({}, S.satValues);
+      liveSnap.satPropagated = Object.assign({}, S.satPropagated);
+    }
+  }
+  const snap = FILE_HISTORY.find(s => s.id === id);
+  if (!snap) return;
+  ACTIVE_SNAP_ID = id;
+
+  // Restore state
+  S.fileName    = snap.fileName;
+  S.imageBase64 = snap.imageBase64;
+  S.imageMimeType = snap.imageMimeType || 'image/jpeg';
+  S.satValues   = Object.assign({}, snap.satValues);
+  S.satPropagated = Object.assign({}, snap.satPropagated);
+
+  // Update upload zone label
+  document.getElementById('upload-label').textContent = snap.fileName;
+  document.getElementById('upload-zone').className = 'loaded';
+
+  // Restore model panels — deep-copy to keep snapshot immutable
+  S.actors = JSON.parse(JSON.stringify(snap.actors));
+  S.elements = JSON.parse(JSON.stringify(snap.elements));
+  S.links = JSON.parse(JSON.stringify(snap.links));
+  S.selectedActorId = null;
+  S.selectedElemIds.clear();
+  S.selectedLinkId = null;
+  document.getElementById('clear-actor-btn').style.display = 'none';
+  document.getElementById('filter-pill').style.display = 'none';
+  renderActors(); renderElements(); renderLinks(); updateSummary();
+
+  // Restore output panel
+  document.getElementById('output-body').innerHTML = snap.outputHtml;
+
+  renderFilesSidebar();
+}
+
+function openLightbox(b64, fileName, mimeType) {
+  const lb = document.getElementById('img-lightbox');
+  document.getElementById('img-lightbox-img').src = 'data:' + (mimeType || 'image/jpeg') + ';base64,' + b64;
+  document.getElementById('img-lightbox-fname').textContent = fileName || '';
+  lb.classList.add('open');
+  // Attach exactly once at document level; re-attaching is safe (same reference)
+  document.removeEventListener('keydown', _lbKeyClose);
+  document.addEventListener('keydown', _lbKeyClose);
+}
+function closeLightbox(e) {
+  if (e && e.target && e.target.id === 'img-lightbox-img') return; // click on img = keep open
+  document.getElementById('img-lightbox').classList.remove('open');
+  document.removeEventListener('keydown', _lbKeyClose);
+}
+function _lbKeyClose(e) { if (e.key === 'Escape') { closeLightbox(); } }
+
+function renderFilesSidebar() {
+  const body  = document.getElementById('files-sidebar-body');
+  // Update count badge in the side panel header tab
+  const countEl = document.getElementById('sph-files-count');
+  if (countEl) countEl.textContent = FILE_HISTORY.length;
+
+  if (!FILE_HISTORY.length) {
+    body.innerHTML =
+      '<div id="files-sidebar-empty">' +
+      '<div class="fs-empty-icon">&#128247;</div>' +
+      '<div class="fs-empty-text">Analysed images<br>will appear here</div>' +
+      '</div>';
+    return;
+  }
+
+  // Build DOM directly — never embed base64 or snap IDs in onclick attributes.
+  // Use data-snap-id attributes + event delegation via _fsSidebarClick.
+  body.innerHTML = '';
+  const ordered = [...FILE_HISTORY].reverse();
+  ordered.forEach(snap => {
+    const isActive = snap.id === ACTIVE_SNAP_ID;
+    const entry = document.createElement('div');
+    entry.className = 'fs-entry' + (isActive ? ' fs-active' : '');
+    entry.dataset.snapId = snap.id;
+
+    // Thumbnail
+    if (snap.imageBase64) {
+      const wrap = document.createElement('div');
+      wrap.className = 'fs-thumb-wrap';
+      wrap.dataset.action = 'lightbox';
+      const img = document.createElement('img');
+      img.src = 'data:' + (snap.imageMimeType || 'image/jpeg') + ';base64,' + snap.imageBase64;
+      img.alt = snap.fileName;
+      const overlay = document.createElement('div');
+      overlay.className = 'fs-thumb-overlay';
+      overlay.textContent = '\uD83D\uDD0D'; // 🔍
+      wrap.appendChild(img);
+      wrap.appendChild(overlay);
+      if (isActive) {
+        const badge = document.createElement('div');
+        badge.className = 'fs-badge-active';
+        badge.textContent = 'active';
+        wrap.appendChild(badge);
+      }
+      entry.appendChild(wrap);
+    } else {
+      const noImg = document.createElement('div');
+      noImg.className = 'fs-thumb-no-img';
+      noImg.textContent = '\uD83D\uDCCB'; // 📋
+      entry.appendChild(noImg);
+    }
+
+    // Meta
+    const meta = document.createElement('div');
+    meta.className = 'fs-meta';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'fs-name';
+    nameEl.title = snap.fileName;
+    nameEl.textContent = snap.fileName;
+    const statsEl = document.createElement('div');
+    statsEl.className = 'fs-stats';
+    statsEl.textContent = snap.actors.length
+      ? snap.actors.length + 'a · ' + snap.elements.length + 'e · ' + snap.links.length + 'l'
+      : 'No model data';
+    meta.appendChild(nameEl);
+    meta.appendChild(statsEl);
+    entry.appendChild(meta);
+
+    // Actions
+    const actions = document.createElement('div');
+    actions.className = 'fs-actions';
+    const imgBtn = document.createElement('button');
+    imgBtn.className = 'fs-btn';
+    imgBtn.dataset.action = 'lightbox';
+    imgBtn.innerHTML = '&#128247; Img';
+    const viewBtn = document.createElement('button');
+    if (isActive) {
+      viewBtn.className = 'fs-btn';
+      viewBtn.disabled = true;
+      viewBtn.style.cssText = 'opacity:.4;cursor:default';
+      viewBtn.textContent = 'Active';
+    } else {
+      viewBtn.className = 'fs-btn fs-primary';
+      viewBtn.dataset.action = 'restore';
+      viewBtn.innerHTML = '&#9654; View';
+    }
+    actions.appendChild(imgBtn);
+    actions.appendChild(viewBtn);
+    entry.appendChild(actions);
+
+    body.appendChild(entry);
+  });
+}
+
+// Single delegated click handler for the sidebar — no base64 in HTML attributes
+document.getElementById('files-sidebar-body').addEventListener('click', function(e) {
+  const entry = e.target.closest('.fs-entry[data-snap-id]');
+  if (!entry) return;
+  const snapId = entry.dataset.snapId;
+  const snap   = FILE_HISTORY.find(s => s.id === snapId);
+  if (!snap) return;
+  const action = e.target.closest('[data-action]')?.dataset.action;
+  if (action === 'lightbox') { openLightbox(snap.imageBase64, snap.fileName, snap.imageMimeType); return; }
+  if (action === 'restore')  { restoreSnapshot(snapId); return; }
+});
+
+</script>
+</body>
+</html>
